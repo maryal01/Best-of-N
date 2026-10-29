@@ -104,7 +104,7 @@ for a in answers:
             gold[a["question_id"]])
         )
 
-with open("results/table_256.csv", "w") as f:
+with open("table.csv", "w") as f:
     w = csv.writer(f)
     w.writerow(["question_id", "score", "correct"])
 
