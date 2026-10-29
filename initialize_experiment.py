@@ -21,9 +21,6 @@ WEAKER_GENERATOR = "Qwen/Qwen2.5-0.5B-Instruct"
 SCORER = "Skywork/Skywork-Reward-V2-Qwen3-1.7B"
 WEAKER_SCORER = "Skywork/Skywork-Reward-V2-Qwen3-0.6B"
 
-from google.colab import drive
-drive.mount("/content/drive")
-
 # ---------- 1. Questions + answer key ----------
 data = load_dataset("openai/gsm8k", "main", split="test").select(range(N_QUESTIONS))
 questions = [row["question"] for row in data]
@@ -107,7 +104,7 @@ for a in answers:
             gold[a["question_id"]])
         )
 
-with open("/content/drive/MyDrive/table_256.csv", "w") as f:
+with open("results/table_256.csv", "w") as f:
     w = csv.writer(f)
     w.writerow(["question_id", "score", "correct"])
 
