@@ -6,6 +6,7 @@
 5. Saves table.csv  (question_id, score, correct)
 """
 import csv
+import os
 import re
 
 import torch
@@ -13,8 +14,12 @@ from datasets import load_dataset
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from vllm import LLM, SamplingParams
 
-N_QUESTIONS = 100
+N_QUESTIONS = 1319  # full GSM8K test set (was 100)
 ANSWERS_PER_QUESTION = 256
+# Run only questions START..END-1 (set by train.sub so each job fits in 4h); default: all.
+START = int(os.environ.get("START", 0))
+END = min(int(os.environ.get("END", N_QUESTIONS)), N_QUESTIONS)
+OUT = os.environ.get("OUT", "results/table_256.csv")
 
 GENERATOR = "Qwen/Qwen2.5-Math-1.5B-Instruct"
 WEAKER_GENERATOR = "Qwen/Qwen2.5-0.5B-Instruct"
@@ -22,7 +27,7 @@ SCORER = "Skywork/Skywork-Reward-V2-Qwen3-1.7B"
 WEAKER_SCORER = "Skywork/Skywork-Reward-V2-Qwen3-0.6B"
 
 # ---------- 1. Questions + answer key ----------
-data = load_dataset("openai/gsm8k", "main", split="test").select(range(N_QUESTIONS))
+data = load_dataset("openai/gsm8k", "main", split="test").select(range(START, END))
 questions = [row["question"] for row in data]
 gold = [row["answer"].split("####")[-1].strip().replace(",", "") for row in data]
 
@@ -104,12 +109,12 @@ for a in answers:
             gold[a["question_id"]])
         )
 
-with open("table.csv", "w") as f:
+with open(OUT, "w") as f:
     w = csv.writer(f)
     w.writerow(["question_id", "score", "correct"])
 
     for a in answers:
-        w.writerow([a["question_id"], a["score"], a["correct"]])
+        w.writerow([START + a["question_id"], a["score"], a["correct"]])
 
 acc = sum(a["correct"] for a in answers) / len(answers)
 print(f"saved table.csv. Fraction of answers correct: {acc:.3f}")
