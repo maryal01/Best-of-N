@@ -22,6 +22,16 @@
 #     done
 #   then: python run_experiment.py results/math500_<scorer>.csv
 #
+# MATH held-out (the 4,500 MATH test questions not in MATH-500, in a fixed random order),
+# scored by Skywork-V2-Qwen3-0.6B only. Re-tests the MATH-500 peak on new data: is accuracy
+# at N=64 (chosen from MATH-500, before seeing these) higher than at N=256? Fix the number of
+# questions before looking: 30 chunks = 3,000 questions, ~94% power for a 1-point decline.
+#   sbatch --array=0 jobs/scholar.sub math     then   sbatch --array=1-29 jobs/scholar.sub math
+#   Each task writes results/math_part<k>.csv. Merge, then test at the pre-chosen N:
+#     head -n 1 results/math_part0.csv > results/math_skywork.csv
+#     tail -q -n +2 results/math_part*.csv >> results/math_skywork.csv
+#     python run_experiment.py results/math_skywork.csv 64
+#
 # Generated answers are saved to $RCAC_SCRATCH/bon_answers/, so resubmitting a task that
 # was killed while scoring skips generation. A task killed during generation leaves no
 # output: lower CHUNK, widen the array range to cover all questions, resubmit missing parts.
@@ -66,8 +76,13 @@ case $DATASET in
         OUT_PREFIX=results/math500_part
         export MAX_TOKENS=2048
         export SCORERS=Skywork/Skywork-Reward-V2-Qwen3-0.6B,OpenAssistant/reward-model-deberta-v3-large-v2 ;;
+    math)
+        N_QUESTIONS=4500; CHUNK=100
+        OUT_PREFIX=results/math_part
+        export MAX_TOKENS=2048
+        export SCORERS=Skywork/Skywork-Reward-V2-Qwen3-0.6B ;;
     *)
-        echo "Unknown dataset '$DATASET'; use gsm8k or math500." >&2
+        echo "Unknown dataset '$DATASET'; use gsm8k, math500 or math." >&2
         exit 1 ;;
 esac
 TASK=${SLURM_ARRAY_TASK_ID:-0}
@@ -111,8 +126,8 @@ if sys.version_info < (3, 10):
 from vllm import LLM, SamplingParams
 import transformers, accelerate, datasets, torch  # accelerate: needed for device_map="cuda"
 import os
-if os.environ["DATASET"] == "math500":
-    import math_verify  # grades MATH-500's LaTeX answers
+if os.environ["DATASET"] in ("math500", "math"):
+    import math_verify  # grades MATH's LaTeX answers
 if not torch.cuda.is_available():
     sys.exit("torch cannot use the GPU")
 print("packages OK: torch", torch.__version__, "on", torch.cuda.get_device_name(0))

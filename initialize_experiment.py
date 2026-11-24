@@ -1,5 +1,6 @@
 """
-1. Take math questions with an answer key: GSM8K (default) or MATH-500 (DATASET=math500).
+1. Take math questions with an answer key: GSM8K (default), MATH-500 (DATASET=math500), or
+   the 4,500 other MATH test questions (DATASET=math), new data for re-testing MATH-500 results.
 2. The generator answers each question ANSWERS_PER_QUESTION times.
 3. Each answer is checked against the answer key.
 4. Each scorer (a reward model) gives every answer a score.
@@ -9,12 +10,13 @@ Settings come from environment variables (jobs/scholar.sub sets them); the defau
 reproduce the original GSM8K run with the weaker scorer.
 """
 import csv
+import hashlib
 import json
 import os
 import re
 
 import torch
-from datasets import load_dataset
+from datasets import concatenate_datasets, load_dataset
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from vllm import LLM, SamplingParams
 
@@ -27,7 +29,7 @@ WEAKER_SCORER = "Skywork/Skywork-Reward-V2-Qwen3-0.6B"
 # 2023 general-chat reward model, not trained on math, reads at most 512 tokens
 WEAKEST_SCORER = "OpenAssistant/reward-model-deberta-v3-large-v2"
 
-DATASET = os.environ.get("DATASET", "gsm8k")                 # "gsm8k" or "math500"
+DATASET = os.environ.get("DATASET", "gsm8k")                 # "gsm8k", "math500" or "math"
 SCORERS = os.environ.get("SCORERS", WEAKER_SCORER).split(",")  # comma-separated
 MAX_TOKENS = int(os.environ.get("MAX_TOKENS", 1024))
 # Run only questions START..END-1 (set by jobs/scholar.sub so each job fits in 4h); default: all.
@@ -44,6 +46,28 @@ if DATASET == "math500":
     data = data.select(range(START, min(END, len(data))))
     questions = [row["problem"] for row in data]
     gold = [row["answer"] for row in data]
+elif DATASET == "math":
+    def last_boxed(text):
+        """Contents of the last \\boxed{...} (nested braces allowed): MATH's answer key."""
+        i = text.rfind("\\boxed{") + len("\\boxed{")
+        j, depth = i, 1
+        while depth:
+            depth += {"{": 1, "}": -1}.get(text[j], 0)
+            j += 1
+        return text[i:j - 1]
+
+    norm = lambda s: " ".join(s.split())
+    in_math500 = {norm(p) for p in load_dataset("HuggingFaceH4/MATH-500", split="test")["problem"]}
+    subjects = ["algebra", "counting_and_probability", "geometry", "intermediate_algebra",
+                "number_theory", "prealgebra", "precalculus"]
+    data = concatenate_datasets([load_dataset("EleutherAI/hendrycks_math", s, split="test") for s in subjects])
+    data = data.filter(lambda row: norm(row["problem"]) not in in_math500)
+    # Fixed pseudo-random order (by hash of the problem text, so it never depends on library
+    # versions): the first k chunks are then a random sample of the 4,500 questions.
+    order = sorted(range(len(data)), key=lambda i: hashlib.sha256(data[i]["problem"].encode()).hexdigest())
+    data = data.select(order).select(range(START, min(END, len(data))))
+    questions = [row["problem"] for row in data]
+    gold = [last_boxed(row["solution"]) for row in data]
 else:
     data = load_dataset("openai/gsm8k", "main", split="test")
     data = data.select(range(START, min(END, len(data))))
@@ -105,7 +129,7 @@ def same_number(a, b):
     except ValueError:
         return False
 
-if DATASET == "math500":
+if DATASET in ("math500", "math"):
     # MATH answers are LaTeX (fractions, roots, intervals...), so compare them symbolically.
     from math_verify import parse, verify
     gold_parsed = [parse("\\boxed{" + g + "}") for g in gold]
