@@ -1,0 +1,360 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{enumitem}
+\usepackage{booktabs}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{assumption}{Assumption}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+\newcommand{\E}{\mathbb{E}}
+\renewcommand{\Pr}{\mathbb{P}}
+\newcommand{\sgn}{\operatorname{sgn}}
+
+\title{Exact Monotonicity and Optimal Sample Size in Best-of-$N$ Selection:\\ Proofs}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Setup}
+
+Let $(U_i,S_i)_{i\ge 1}$ be i.i.d.\ pairs, with $U_i$ a bounded true utility and
+$S_i$ a verifier score taking values $s_1<s_2<\dots<s_K$. Write
+\[
+p_j=\Pr(S=s_j),\qquad m_j=\E[U\mid S=s_j],\qquad F_j=p_1+\dots+p_j ,\qquad F_0=0,\ F_K=1 .
+\]
+Best-of-$N$ returns $I_N\in\arg\max_{i\le N}S_i$ and we study
+$V(N):=\E[U_{I_N}]$ for integers $N\ge 1$, with forward difference
+$\Delta(N):=V(N+1)-V(N)$.
+
+\begin{assumption}[Full support]\label{as:supp}
+$p_j>0$ for all $j$, so $0<F_1<F_2<\dots<F_{K-1}<1$.
+\end{assumption}
+
+\begin{assumption}[Score-only tie-breaking]\label{as:tie}
+$I_N$ is a function of $(S_1,\dots,S_N)$ and of a randomisation $\xi$ independent of
+$(U_i,S_i)_{i\le N}$. (Uniform-at-random and lowest-index tie-breaking both qualify.)
+\end{assumption}
+
+Assumption~\ref{as:tie} is what makes the problem tractable and it is not cosmetic:
+if ties were broken using $U$ (e.g.\ ``among top-scored answers keep the best one'')
+the identity below fails.
+
+\section{Reduction to the maximum score}
+
+\begin{lemma}[Reduction]\label{lem:red}
+Let $M_N=\max_{i\le N}S_i$ and $m(s_j)=m_j$. Under Assumption~\ref{as:tie},
+$V(N)=\E[m(M_N)]$.
+\end{lemma}
+
+\begin{proof}
+Let $\mathcal G=\sigma(S_1,\dots,S_N,\xi)$. Because the pairs are independent and $\xi$
+is independent of everything, $\E[U_i\mid\mathcal G]=\E[U_i\mid S_i]=m(S_i)$ for each $i$.
+Since $\{I_N=i\}\in\mathcal G$,
+\[
+\E[U_{I_N}\mid\mathcal G]=\sum_{i=1}^N \mathbf 1\{I_N=i\}\,\E[U_i\mid\mathcal G]
+=\sum_{i=1}^N \mathbf 1\{I_N=i\}\,m(S_i)=m(S_{I_N})=m(M_N).
+\]
+Take expectations.
+\end{proof}
+
+\begin{lemma}[Exact formula]\label{lem:formula}
+Let $d_j:=m_{j+1}-m_j$ for $j=1,\dots,K-1$. Then
+\begin{align}
+V(N)&=\sum_{j=1}^{K}m_j\bigl(F_j^{N}-F_{j-1}^{N}\bigr)
+     = m_K-\sum_{j=1}^{K-1}d_j\,F_j^{N}, \label{eq:V}\\
+\Delta(N)&=\sum_{j=1}^{K-1}d_j\,(1-F_j)\,F_j^{N}. \label{eq:D}
+\end{align}
+\end{lemma}
+
+\begin{proof}
+$\Pr(M_N\le s_j)=F_j^N$ by independence, so $\Pr(M_N=s_j)=F_j^N-F_{j-1}^N$, and the first
+equality is Lemma~\ref{lem:red}. Summation by parts with $F_0^N=0$, $F_K^N=1$ gives
+$\sum_{j=1}^K m_j(F_j^N-F_{j-1}^N)=m_K F_K^N-\sum_{j=1}^{K-1}(m_{j+1}-m_j)F_j^N$.
+Finally $F_j^{N}-F_j^{N+1}=(1-F_j)F_j^{N}$ gives \eqref{eq:D}.
+\end{proof}
+
+For $K=3$, writing $a=F_2=p_1+p_2$ and $b=F_1=p_1$, \eqref{eq:V}--\eqref{eq:D} read
+\begin{equation}\label{eq:three}
+V(N)=m_3+(m_2-m_3)a^N+(m_1-m_2)b^N,\qquad
+\Delta(N)=(m_2-m_1)(1-b)\,b^N-(m_2-m_3)(1-a)\,a^N ,
+\end{equation}
+which are exactly the two expressions in the project description.
+
+\section{When is Best-of-$N$ monotone for every score distribution?}
+
+\begin{theorem}[Aligned verifier]\label{thm:aligned}
+\begin{enumerate}[label=(\roman*)]
+\item If $m_1\le m_2\le\dots\le m_K$, then $V$ is nondecreasing in $N$, for every $p$.
+It is strictly increasing under Assumption~\ref{as:supp} unless all $m_j$ are equal.
+\item Conversely, if $m_{j+1}<m_j$ for some $j$, there is a full-support $p$ for which
+$V(2)<V(1)$. Hence $V$ is nondecreasing for every score distribution \emph{iff} $m$ is
+nondecreasing.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+(i) Every term of \eqref{eq:D} is $\ge 0$, and under Assumption~\ref{as:supp} the term $j$
+is $>0$ whenever $d_j>0$. (Equivalently: $M_{N+1}\ge M_N$ pointwise, so
+$m(M_{N+1})\ge m(M_N)$ pointwise; this version needs no discreteness and holds for
+arbitrary score distributions.)
+
+(ii) For $\varepsilon\in(0,1)$ put mass $(1-\varepsilon)/2$ on each of $s_j,s_{j+1}$ and
+spread $\varepsilon$ evenly over the remaining levels. $\Delta(1)$ is continuous in $p$, and
+at $\varepsilon=0$ we have $F_i=0$ for $i<j$, $F_j=\tfrac12$, $F_i=1$ for $i>j$, so
+\eqref{eq:D} gives $\Delta(1)=d_j/4<0$. Hence $\Delta(1)<0$ for small $\varepsilon>0$.
+\end{proof}
+
+\section{Complete characterization for three levels}
+
+Throughout this section $K=3$, Assumption~\ref{as:supp} holds (so $0<b<a<1$), and
+\[
+\alpha:=m_2-m_1,\qquad \beta:=m_3-m_2,\qquad r:=b/a\in(0,1).
+\]
+By \eqref{eq:three},
+\begin{equation}\label{eq:g}
+\Delta(N)=a^{N}g(N),\qquad g(x):=\alpha(1-b)\,r^{x}+\beta(1-a),\quad x\in\mathbb R .
+\end{equation}
+
+\begin{lemma}[Single crossing]\label{lem:sc}
+$\sgn\Delta(N)=\sgn g(N)$. If $\alpha>0$, $g$ is strictly decreasing; if $\alpha<0$, strictly
+increasing; if $\alpha=0$, constant. In all cases $g(x)\to\beta(1-a)$ as $x\to\infty$.
+Consequently $N\mapsto\sgn\Delta(N)$ changes at most once, and if $\beta\neq 0$ then
+$\sgn\Delta(N)=\sgn\beta$ for all large $N$.
+\end{lemma}
+
+\begin{proof}
+$a^N>0$, $r^x$ is strictly decreasing with limit $0$, and $(1-b)>0$, $(1-a)>0$.
+\end{proof}
+
+\begin{theorem}[Two-point monotonicity test]\label{thm:two}
+Let $\Delta(1)=V(2)-V(1)=\alpha\,p_1(p_2+p_3)+\beta\,(p_1+p_2)p_3$. Then
+\begin{enumerate}[label=(\alph*)]
+\item $V$ is nondecreasing on $\{1,2,\dots\}$ $\iff$ $\beta\ge 0$ and $\Delta(1)\ge 0$;
+\item $V$ is nonincreasing on $\{1,2,\dots\}$ $\iff$ $\beta\le 0$ and $\Delta(1)\le 0$;
+\item otherwise $V$ is not monotone, and exactly one of the following holds:
+  \begin{itemize}
+  \item $\beta<0<\Delta(1)$: $V$ strictly increases, then strictly decreases
+        (interior maximum; ``more sampling eventually hurts'');
+  \item $\beta>0>\Delta(1)$: $V$ strictly decreases, then strictly increases (interior minimum).
+  \end{itemize}
+\end{enumerate}
+In words: Best-of-$N$ is monotone iff the sign of the first step $V(2)-V(1)$ agrees with the
+sign of the top increment $m_3-m_2$.
+\end{theorem}
+
+\begin{proof}
+(a) $V$ is nondecreasing iff $g(N)\ge 0$ for all integers $N\ge1$.
+If $\alpha>0$: $g$ decreases to $\beta(1-a)$, which it never attains, so
+$\inf_{N\ge 1}g(N)=\beta(1-a)$ and $g(N)\ge0\ \forall N$ iff $\beta\ge0$; in that case
+$\Delta(1)>0$ automatically.
+If $\alpha<0$: $g$ is increasing, so $g(N)\ge0\ \forall N\ge1$ iff $g(1)\ge0$, i.e.\
+$\Delta(1)\ge0$; and then $\beta(1-a)=\lim g>g(1)\ge0$ gives $\beta>0$.
+If $\alpha=0$: $g\equiv\beta(1-a)$ and $\Delta(1)=\beta(1-a)a$.
+In each case the condition is ``$\beta\ge0$ and $\Delta(1)\ge0$''.
+(b) Apply (a) to $-U$.
+(c) If neither (a) nor (b) holds then either $\beta<0<\Delta(1)$ or $\beta>0>\Delta(1)$
+(the remaining sign patterns, e.g.\ $\beta=0$, fall under (a) or (b) by the case analysis
+above). In the first case $g(1)>0$ and $g(\infty)<0$ force $\alpha>0$, so $g$ is strictly
+decreasing with a single sign change from $+$ to $-$; the second case is symmetric.
+\end{proof}
+
+\begin{theorem}[Optimal $N$ in the one-tail-crossover regime]\label{thm:opt}
+Suppose $m_1<m_2$ and $m_3<m_2$ (i.e.\ $\alpha>0>\beta$) and define
+\begin{equation}\label{eq:Nstar}
+N^\star=\frac{\ln\!\Bigl(\dfrac{(m_2-m_1)(1-b)}{(m_2-m_3)(1-a)}\Bigr)}{\ln(a/b)}
+=\frac{\ln\!\Bigl(\dfrac{(m_2-m_1)(p_2+p_3)}{(m_2-m_3)\,p_3}\Bigr)}{\ln\!\bigl((p_1+p_2)/p_1\bigr)} .
+\end{equation}
+Then $\Delta(N)>0$ for $N<N^\star$, $\Delta(N)=0$ for $N=N^\star$, and $\Delta(N)<0$ for
+$N>N^\star$. Consequently:
+\begin{enumerate}[label=(\roman*)]
+\item $V$ is strictly increasing on $\{1,\dots,N_{\mathrm{opt}}\}$ and nonincreasing afterwards
+(strictly decreasing from $N_{\mathrm{opt}}+1$ on), where
+\[
+N_{\mathrm{opt}}=\max\bigl\{1,\ \lfloor N^\star\rfloor+1\bigr\}
+\]
+is a maximizer of $V$ over $N\ge1$. It is the unique maximizer unless $N^\star$ is an
+integer $\ge1$, in which case the maximizers are exactly $N^\star$ and $N^\star+1$.
+\item The optimum is interior ($N_{\mathrm{opt}}\ge2$) iff $N^\star\ge 1$ iff $\Delta(1)\ge 0$, i.e.
+\[
+(m_2-m_1)\,p_1(p_2+p_3)\ \ge\ (m_2-m_3)\,(p_1+p_2)\,p_3 ,
+\]
+with $V(2)>V(1)$ iff the inequality is strict; otherwise $N_{\mathrm{opt}}=1$ and sampling
+more is harmful from the first extra sample.
+\item $V(N)\to m_3<V(N_{\mathrm{opt}})$ as $N\to\infty$.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+By \eqref{eq:g}, with $c:=\dfrac{(m_2-m_3)(1-a)}{(m_2-m_1)(1-b)}>0$,
+\[
+\Delta(N)>0\iff \alpha(1-b)r^{N}>-\beta(1-a)\iff r^{N}>c\iff N\ln r>\ln c
+\iff N<\frac{\ln c}{\ln r}=\frac{\ln(1/c)}{\ln(a/b)}=N^\star,
+\]
+where the last equivalence divides by $\ln r<0$. The same chain with ``$=$'' and ``$<$''
+gives the other two cases.
+
+(i) If $N^\star<1$, $\Delta(N)<0$ for all $N\ge 1$ and the maximizer is $N=1=\max\{1,\lfloor N^\star\rfloor+1\}$.
+If $N^\star\ge1$, the integers with $\Delta(N)>0$ are exactly $N<N^\star$.
+When $N^\star\notin\mathbb Z$ these are $N\le\lfloor N^\star\rfloor$, so $V(1)<\dots<V(\lfloor N^\star\rfloor+1)$
+and $V$ strictly decreases afterwards. When $N^\star\in\mathbb Z$, $V$ strictly increases up to
+$V(N^\star)$, $V(N^\star+1)=V(N^\star)$, and $V$ strictly decreases afterwards.
+
+(ii) $N^\star\ge1\iff r\ge c\iff g(1)\ge 0\iff\Delta(1)\ge0$; substitute $1-a=p_3$, $1-b=p_2+p_3$.
+
+(iii) $a^N,b^N\to0$ in \eqref{eq:three}. For the strict inequality, pick $N>N^\star$, $N\ge N_{\mathrm{opt}}$:
+$V(N)-m_3=\sum_{n\ge N}(-\Delta(n))>0$.
+\end{proof}
+
+\begin{remark}[Reading \eqref{eq:Nstar}]
+$N^\star$ grows when the benefit of leaving the bottom level, $(m_2-m_1)$, is large relative
+to the over-optimization penalty $(m_2-m_3)$; when the misleading top level is rare
+($p_3\to0$ gives $N^\star\to\infty$); and when $p_1$ is close to $p_1+p_2$ so that the
+``good'' term $b^N$ decays almost as slowly as the ``bad'' term $a^N$.
+\end{remark}
+
+\section{Generalization to $K$ levels}
+
+For $K\ge4$, $\Delta$ is a sum of more than two exponentials and need not cross zero only
+once. The right generalization bounds the number of turning points of $V$ by the number of
+turning points of the calibration curve $j\mapsto m_j$.
+
+\begin{lemma}[Descartes' rule for exponential sums]\label{lem:desc}
+Let $\lambda_1<\dots<\lambda_n$ and let $c_1,\dots,c_n\in\mathbb R$ be not all zero. Then
+$f(x)=\sum_{j=1}^n c_j e^{\lambda_j x}$ has at most $Z$ real zeros counted with multiplicity,
+where $Z$ is the number of sign changes in $(c_1,\dots,c_n)$ after deleting zeros.
+\end{lemma}
+
+\begin{proof}
+Induct on $Z$. If $Z=0$, all nonzero $c_j$ share a sign and $f$ has no zero. If $Z\ge1$,
+delete the zero coefficients, pick consecutive indices $k,k+1$ with $c_kc_{k+1}<0$ and
+$\mu\in(\lambda_k,\lambda_{k+1})$. Then $h(x)=e^{-\mu x}f(x)$ has the same zeros with the same
+multiplicities as $f$, and
+$h'(x)=\sum_j c_j(\lambda_j-\mu)e^{(\lambda_j-\mu)x}$. The factors $(\lambda_j-\mu)$ are negative
+for $j\le k$ and positive for $j\ge k+1$, so the coefficient sequence of $h'$ has exactly
+$Z-1$ sign changes. By induction $h'$ has at most $Z-1$ zeros, and by Rolle's theorem
+(with multiplicity) $h$ has at most $Z$.
+\end{proof}
+
+\begin{theorem}[Variation diminishing]\label{thm:K}
+Under Assumptions \ref{as:supp}--\ref{as:tie}, suppose the $m_j$ are not all equal, and let
+$Z$ be the number of sign changes in the increment sequence $(d_1,\dots,d_{K-1})$ (zeros deleted). Then:
+\begin{enumerate}[label=(\roman*)]
+\item the sequence $\Delta(1),\Delta(2),\dots$ changes sign at most $Z$ times, i.e.\
+$V$ has at most $Z$ turning points;
+\item for all large $N$, $\sgn\Delta(N)=\sgn d_{j^\dagger}$ where $j^\dagger$ is the largest
+index with $d_j\ne0$: \emph{the top of the calibration curve decides the tail};
+\item \emph{(single-peaked calibration $\Rightarrow$ single-peaked BoN)} if
+$m_1\le\dots\le m_k\ge\dots\ge m_K$ with $m_k>m_K$, then $V$ is nondecreasing on
+$\{1,\dots,N_{\mathrm{opt}}\}$ and nonincreasing afterwards, where
+$N_{\mathrm{opt}}=\min\{N\ge1:\Delta(N)\le0\}<\infty$ maximizes $V$.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+By \eqref{eq:D}, $\Delta(N)=f(N)$ with $f(x)=\sum_{j=1}^{K-1}c_je^{\lambda_jx}$,
+$c_j=d_j(1-F_j)$, $\lambda_j=\ln F_j$. Assumption~\ref{as:supp} gives
+$\lambda_1<\dots<\lambda_{K-1}<0$ and $\sgn c_j=\sgn d_j$.
+
+(i) By Lemma~\ref{lem:desc}, $f$ has at most $Z$ real zeros. Each sign change of the integer
+sequence $\Delta(N)$ forces, by the intermediate value theorem, a sign change of $f$ on a
+distinct interval, hence a distinct zero of odd multiplicity.
+
+(ii) $f(x)e^{-\lambda_{j^\dagger}x}\to c_{j^\dagger}$ as $x\to\infty$, since all other
+surviving exponents are strictly smaller.
+
+(iii) Here the nonzero increments are of the form $(+,\dots,+,-,\dots,-)$ with at least one
+``$-$'', so $Z\le1$ and by (ii) $f<0$ eventually. If $f$ has no zero, $f<0$ everywhere and
+$N_{\mathrm{opt}}=1$. Otherwise $f$ has exactly one zero $x_0$, which is simple (a zero of
+multiplicity $\ge 2$ would exceed the bound $Z\le 1$), so $f>0$ on $(-\infty,x_0)$ and $f<0$ on $(x_0,\infty)$.
+Either way $\Delta(N)>0$ for $N<N_{\mathrm{opt}}$ and $\Delta(N)\le0$ for $N\ge N_{\mathrm{opt}}$.
+\end{proof}
+
+Theorem~\ref{thm:K} contains the earlier results: $Z=0$ with positive increments is
+Theorem~\ref{thm:aligned}(i); for $K=3$ it reproduces Lemma~\ref{lem:sc}, and
+Theorem~\ref{thm:opt} is the case where the unique zero $x_0=N^\star$ is available in closed form.
+For $K\ge4$ there is in general no closed form, but (iii) says a linear scan for the first
+$N$ with $\Delta(N)\le0$ (or bisection on $f$) finds the global optimum.
+
+\begin{remark}[Continuous scores]
+Lemma~\ref{lem:red} holds for any score distribution. If $S$ has continuous cdf $F$ and
+$m$ has bounded variation, \eqref{eq:D} becomes
+$\Delta(N)=\int F(s)^N(1-F(s))\,dm(s)$, and the kernel $F(s)^N=e^{N\ln F(s)}$ is totally
+positive, so the same variation-diminishing conclusion follows from Karlin's theorem
+(S.~Karlin, \emph{Total Positivity}, 1968). We do not need this here: the experiment below is
+an exact instance of the finite-$K$ model.
+\end{remark}
+
+\section{Connection to the LLM experiment}
+
+The experiment draws, for each question $q$, a pool of $M$ scored answers and averages
+Best-of-$N$ accuracy over questions. Questions are heterogeneous, and an average of
+single-peaked curves need not be single-peaked, so one might worry that the theory does not
+transfer. It does, because ranks are quantiles.
+
+\begin{proposition}[Rank calibration]\label{prop:rank}
+For each question let $c_{q,j}\in\{0,1\}$ be the correctness of its $j$-th lowest-scored answer
+(scores distinct), and $\bar m_j=\frac1Q\sum_q c_{q,j}$ the \emph{rank-calibration curve}.
+\begin{enumerate}[label=(\roman*)]
+\item If Best-of-$N$ draws i.i.d.\ (with replacement) from each question's pool, the
+question-averaged accuracy is exactly \eqref{eq:V} with $K=M$, $F_j=j/M$, $m_j=\bar m_j$.
+So Theorems \ref{thm:aligned} and \ref{thm:K} apply verbatim to $\bar m$.
+\item If it draws without replacement (what \texttt{run\_experiment.py} does),
+\[
+V(N)=\sum_{j=N}^{M}\bar m_j\,\binom{j-1}{N-1}\Big/\binom{M}{N},
+\]
+and $V$ is nondecreasing whenever $\bar m$ is nondecreasing.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(i) For a single question, the pool's empirical distribution is a $K=M$ level model with
+$p_j=1/M$ and $m_j=c_{q,j}$, so $V_q(N)=\sum_j c_{q,j}\bigl((j/M)^N-((j-1)/M)^N\bigr)$. The
+weights do not depend on $q$ and $V_q$ is linear in $c_{q,\cdot}$; average over $q$.
+(ii) The top-scored element of a uniform $N$-subset has rank $j$ iff $j$ is chosen together
+with $N-1$ of the $j-1$ lower ranks. Monotonicity: a uniform $(N+1)$-subset is a uniform
+$N$-subset plus one more element, so its maximum rank is pointwise no smaller.
+\end{proof}
+
+\paragraph{What the data show.}
+Computing $\bar m$ and the exact curves from the four result tables:
+
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+run & $M$ & $\bar m$ by score-quantile bin & exact $\arg\max_N$ & shape \\
+\midrule
+default scorer & 64 & increasing, top bin $0.950$ & $64$ & monotone \\
+weak scorer & 64 & increasing, top bin $0.920$ & $64$ & monotone \\
+weak scorer + weak generator & 64 & increasing, $0.24\to0.74$ & $64$ & monotone \\
+weak scorer & 256 & increasing up to top-2 ranks ($0.93$); rank 1: $0.92$ & $94$ & rise, then slight fall \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The three monotone runs have (binned) nondecreasing $\bar m$, as Theorem~\ref{thm:aligned}
+requires. In the $M=256$ run the formula of Proposition~\ref{prop:rank}(ii) reproduces the
+simulated curve exactly (peak $0.9284$ at $N=94$, then $0.9200$ at $N=256$), and the decline
+is entirely attributable to the very top of the rank-calibration curve: the single
+highest-scored answer is correct for $92\%$ of questions, the next few for $93$--$94\%$.
+This is the one-tail-crossover mechanism of Theorem~\ref{thm:K}(iii).
+
+\paragraph{Caveat.}
+The size of that decline, $V(94)-V(256)=0.0084$, is less than one question out of $100$.
+A bootstrap over questions gives a $95\%$ interval of $[-0.010,\,0.031]$, so the data do
+\emph{not} establish a crossover at conventional significance; coarse three-level fits
+(any split with a top level of $\ge 1\%$ of answers) have $m_1<m_2<m_3$ and predict a monotone curve.
+The honest summary is: the theory exactly explains every observed curve given its
+rank-calibration curve, the observed shapes are consistent with the theorems, and
+demonstrating a genuine interior optimum on this benchmark needs more questions or a
+weaker scorer.
+
+\end{document}
