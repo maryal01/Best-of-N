@@ -9,6 +9,8 @@ For each random split of the questions:
     m_hat_j = average correctness of the answers in level j, over the calibration questions.
   - Plug m_hat into V(N) = sum_j m_j (F_j^N - F_{j-1}^N), take N_hat = argmax.
   - Regret = real_acc_EVAL(best N) - real_acc_EVAL(N_hat).
+Baseline: the DIRECT EMPIRICAL method uses the same calibration questions to compute the real Best-of-N accuracy
+curve (no levels, no model) and picks its argmax. Both methods are compared on the same eval questions.
 Also reported: "discretization regret" = regret of the model's best N when m_j is estimated on the
 whole EVAL set (i.e. with unlimited calibration data). It is the floor that more data cannot remove.
 
@@ -30,6 +32,7 @@ LAYOUTS = {                                   # level masses p_j, lowest score f
     "K=5 equal": [0.2] * 5,
     "K=3 top 5%": [0.50, 0.45, 0.05],
 }
+EMPIRICAL = "Empirical (direct)"            # name of the baseline in the tables and the figure
 N_SPLITS = 1000                               # random calibration/eval splits per setting
 EVAL_FRACTION = 0.8
 CAL_SIZES = [10, 25, 50, 100, 200]            # calibration questions (cut to what the 20% pool has)
@@ -68,6 +71,31 @@ def run_layout(sorted_correct, p, cal_idx, eval_idx, real_eval, sizes, n_max):
     return {size: one_size(size) for size in sizes}, regret_of(N_disc)
 
 
+def run_empirical(sorted_correct, cal_idx, real_eval, sizes, n_max):
+    """
+    Direct empirical baseline: the real Best-of-N accuracy curve of the first `size` calibration questions
+    (exact, N answers drawn without replacement), and N_hat = its argmax. Same output format as run_layout.
+    """
+    W = real_weights(sorted_correct.shape[1], n_max)                       # (n_max, L)
+    best_real = real_eval.max(axis=1)
+
+    def one_size(size):
+        curve = sorted_correct[cal_idx[:, :size]].mean(axis=1) @ W.T       # (splits, n_max)
+        N_hat = np.argmax(curve, axis=1) + 1
+        return {"N_hat": N_hat, "regret": best_real - real_eval[np.arange(len(N_hat)), N_hat - 1]}
+
+    return {size: one_size(size) for size in sizes}
+
+
+def paired_difference_row(by_size, empirical, sizes):
+    """'mean +- se' of (regret of this layout - regret of the empirical baseline) on the same splits, per size."""
+    cells = []
+    for size in sizes:
+        diff = by_size[size]["regret"] - empirical[size]["regret"]
+        cells.append(f"{diff.mean():+.4f}+-{diff.std() / np.sqrt(N_SPLITS):.4f}")
+    return " | ".join(f"{c:>16}" for c in cells)
+
+
 def sweep_table(path):
     questions = load_questions(path)
     n_max = min(len(s) for s, _ in questions)
@@ -93,6 +121,7 @@ def sweep_table(path):
 
     results = {name: run_layout(sorted_correct, p, cal_idx, eval_idx, real_eval, sizes, n_max)
                for name, p in LAYOUTS.items()}
+    results[EMPIRICAL] = (run_empirical(sorted_correct, cal_idx, real_eval, sizes, n_max), np.zeros(N_SPLITS))
 
     for name, (by_size, disc_regret) in results.items():
         print(f"\n  {name}   (discretization regret with unlimited data: {disc_regret.mean():.4f})")
@@ -100,6 +129,12 @@ def sweep_table(path):
         for size, r in by_size.items():
             print(f"  {size:>13} | {r['regret'].mean():>11.4f} | {r['regret'].std() / np.sqrt(N_SPLITS):>8.4f}"
                   f" | {r['N_hat'].mean():>10.1f} | {np.median(r['N_hat']):>12.0f}")
+
+    print("\n  Paired difference in regret vs the empirical baseline (same splits). Negative = K-level model better.")
+    print(f"  {'layout':<12} | " + " | ".join(f"{str(s) + ' questions':>16}" for s in sizes))
+    for name, (by_size, _) in results.items():
+        if name != EMPIRICAL:
+            print(f"  {name:<12} | {paired_difference_row(by_size, results[EMPIRICAL][0], sizes)}")
     return {"sizes": sizes, "results": results, "n_max": n_max}
 
 
@@ -115,8 +150,10 @@ for ax, path, summary in zip(axes[0], paths, summaries):
         sizes = summary["sizes"]
         mean = [by_size[s]["regret"].mean() for s in sizes]
         err = [by_size[s]["regret"].std() / np.sqrt(N_SPLITS) for s in sizes]
-        line = ax.errorbar(sizes, mean, yerr=err, marker="o", capsize=3, label=name)
-        ax.axhline(disc_regret.mean(), ls=":", color=line[0].get_color(), alpha=0.7)   # unlimited-data floor
+        style = {"color": "black", "linestyle": "--"} if name == EMPIRICAL else {}
+        line = ax.errorbar(sizes, mean, yerr=err, marker="o", capsize=3, label=name, **style)
+        if name != EMPIRICAL:
+            ax.axhline(disc_regret.mean(), ls=":", color=line[0].get_color(), alpha=0.7)   # unlimited-data floor
     ax.set_xscale("log")
     ax.set_xlabel("calibration questions")
     ax.set_ylabel("mean regret (accuracy lost)")

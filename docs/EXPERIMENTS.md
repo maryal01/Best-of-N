@@ -8,7 +8,9 @@ Each experiment has its code in `experiments/` (or the repo root for the data pi
 | 2 | Synthetic finite-data simulation (3 levels, rare top level) | done | `experiments/synthetic/simulation.py` | [SIMULATION_RESULTS.md](SIMULATION_RESULTS.md) |
 | 3 | Discretization check: does the K-level rank model reproduce the real best N with unlimited data? | done | `experiments/real_data/discretization_check.py` | [DISCRETIZATION_RESULTS.md](DISCRETIZATION_RESULTS.md) |
 | 4 | Calibration sweep on real data: regret vs number of calibration questions | done on MATH-500 and GSM8K | `experiments/real_data/calibration_sweep.py` | [CALIBRATION_SWEEP_RESULTS.md](CALIBRATION_SWEEP_RESULTS.md) |
+| 4b | Direct empirical baseline vs our K-level method (same calibration questions, same eval questions) | done on MATH-500 and GSM8K (part of the sweep) | `experiments/real_data/calibration_sweep.py` | [CALIBRATION_SWEEP_RESULTS.md](CALIBRATION_SWEEP_RESULTS.md) |
 | 5 | Confirmation on the MATH held-out set (4,500 test questions not in MATH-500, Skywork scorer) | in progress: answers are being generated | `initialize_experiment.py` (`DATASET=math`), `jobs/` | not yet |
+| 6 | Synthetic simulation for K = 3, 5, 10, 20 levels (effect of K and calibration size on regret; coarse-graining of a K=20 world) | done | `experiments/synthetic/k_level_simulation.py` | [K_LEVEL_SIMULATION_RESULTS.md](K_LEVEL_SIMULATION_RESULTS.md) |
 
 ## Next
 

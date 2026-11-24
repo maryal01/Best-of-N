@@ -13,6 +13,7 @@ Code: [`calibration_sweep.py`](../experiments/real_data/calibration_sweep.py) ·
 4. Plug `m_hat` into `V(N) = sum_j m_j (F_j^N - F_{j-1}^N)`, take `N_hat = argmax`.
 5. **Regret** = real eval accuracy at the real best N minus real eval accuracy at `N_hat`.
 6. **Floor** (discretization regret with unlimited data): the same, with `m_j` estimated on the eval questions themselves.
+7. **Direct empirical baseline** (no levels, no model): on the same calibration questions compute the real Best-of-N accuracy curve (exact, without replacement) and take its argmax as `N_hat`. Regret is measured on the same eval questions, and the same splits are used, so the two methods can be compared pair by pair.
 
 The calibration unit is the question (each has 256 answers, but answers of one question are correlated, so effective sample size is far below 256 x questions).
 
@@ -43,6 +44,40 @@ Calibration questions: 10 / 25 / 50 / 100 (GSM8K also 200).
 | K=3 equal | 0.0097 | 0.0070 | 0.0055 | 0.0049 | 0.0048 | 0.0047 |
 | K=5 equal | 0.0096 | 0.0065 | 0.0046 | 0.0034 | 0.0026 | 0.0023 |
 | K=3 top 5% | 0.0071 | 0.0043 | 0.0026 | 0.0014 | 0.0003 | 0.0000 |
+
+## Comparison with the direct empirical baseline
+
+Mean regret of the baseline, and the **paired difference** (K-level model minus empirical, same splits; negative = our method is better, mean +- standard error).
+
+### Empirical baseline regret
+
+| Table | 10 | 25 | 50 | 100 | 200 |
+|---|---|---|---|---|---|
+| MATH-500 DeBERTa | 0.0170 | 0.0112 | 0.0070 | 0.0033 | |
+| MATH-500 Skywork | 0.0122 | 0.0088 | 0.0067 | 0.0054 | |
+| GSM8K Skywork | 0.0072 | 0.0058 | 0.0045 | 0.0039 | 0.0030 |
+
+### Paired difference in regret (layout minus empirical)
+
+| Table | Layout | 10 | 25 | 50 | 100 | 200 |
+|---|---|---|---|---|---|---|
+| MATH-500 DeBERTa | K=3 equal | **-0.0065** | **-0.0019** | +0.0009 | +0.0030 | |
+| | K=5 equal | **-0.0063** | **-0.0030** | -0.0007 | +0.0009 | |
+| | K=3 top 5% | **-0.0017** | **-0.0008** | +0.0001 | +0.0012 | |
+| MATH-500 Skywork | K=3 equal | **-0.0055** | **-0.0065** | **-0.0061** | **-0.0051** | |
+| | K=5 equal | **-0.0012** | **-0.0018** | **-0.0018** | **-0.0014** | |
+| | K=3 top 5% | +0.0031 | +0.0042 | +0.0056 | +0.0067 | |
+| GSM8K Skywork | K=3 equal | +0.0025 | +0.0012 | +0.0010 | +0.0010 | +0.0018 |
+| | K=5 equal | +0.0024 | +0.0007 | +0.0001 | **-0.0004** | **-0.0004** |
+| | K=3 top 5% | -0.0001 | **-0.0015** | **-0.0020** | **-0.0025** | **-0.0027** |
+
+(Standard errors are 0.0001 to 0.0007; bold = more than 2 standard errors below zero.)
+
+**Reading:**
+- **Very few calibration questions (10-25): the K-level model beats the empirical curve on MATH-500**, by up to 0.0065 (a 40-50% lower regret on DeBERTa). The empirical argmax is noisy when the curve is nearly flat, and the model smooths it by pooling answers into 3 to 5 levels.
+- **With more data the empirical method catches up and overtakes** on DeBERTa (crossover around 50 questions for K=3, around 100 for K=5), because the model's discretization floor (0.0004 for K=3, 0.0000 for K=5) is no longer negligible against the shrinking estimation error.
+- **The outcome depends on the layout and the table**, not uniformly in our favour: on Skywork-MATH-500 K=3 and K=5 equal win at every size while K=3 top 5% loses (its floor is 0.012); on GSM8K (monotone curve) the model with K=3 equal loses at every size, K=5 equal is roughly tied, and K=3 top 5% wins.
+- Honest summary: the model is a **small-data advantage**, which matches the motivation of the project, but it is not a free win; a poorly chosen layout (floor too high) loses to the plain empirical method.
 
 ## Findings
 
