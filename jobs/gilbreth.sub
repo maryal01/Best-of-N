@@ -1,6 +1,6 @@
 #!/bin/bash
 # Slurm array job for Purdue Gilbreth: one chunk of initialize_experiment.py per array task.
-# Account aliaga has almost no high-priority GPU quota, so we use the preemptible `standby`
+# Set -A below to YOUR Slurm account. Ours has almost no high-priority GPU quota, so we use the preemptible `standby`
 # QoS (4h limit, up to 24 GPUs per user, any idle GPU). A preempted task is requeued; its
 # generated answers are reused, so only scoring is repeated.
 #

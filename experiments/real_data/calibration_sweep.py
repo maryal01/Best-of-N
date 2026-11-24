@@ -13,7 +13,7 @@ Also reported: "discretization regret" = regret of the model's best N when m_j i
 whole EVAL set (i.e. with unlimited calibration data). It is the floor that more data cannot remove.
 
 Run from the repo root:  python experiments/real_data/calibration_sweep.py results/math500_reward-model-deberta-v3-large-v2.csv [more tables ...]
-Writes calibration_sweep.png (next to this script) and prints one table per input.
+Writes docs/calibration_sweep.png and prints one table per input.
 """
 import sys
 from pathlib import Path
@@ -124,5 +124,5 @@ for ax, path, summary in zip(axes[0], paths, summaries):
     ax.legend(fontsize=8)
 plt.suptitle("Regret of the estimated best N vs. calibration size (dotted: floor with unlimited data)")
 plt.tight_layout()
-plt.savefig(Path(__file__).with_name("calibration_sweep.png"), dpi=150, bbox_inches="tight")
-print("\nsaved calibration_sweep.png")
+plt.savefig(Path(__file__).resolve().parents[2] / "docs" / "calibration_sweep.png", dpi=150, bbox_inches="tight")
+print("\nsaved docs/calibration_sweep.png")

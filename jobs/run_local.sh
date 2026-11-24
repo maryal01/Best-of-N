@@ -1,6 +1,6 @@
 #!/bin/bash
-# Run several chunks one after another on ONE GPU of a plain (non-Slurm) machine, e.g. porsche
-# or ferrari. Start one copy per GPU you want to use, each with its own list of chunks.
+# Run several chunks one after another on ONE GPU of a plain (non-Slurm) machine, e.g. a lab
+# workstation. Start one copy per GPU you want to use, each with its own list of chunks.
 #
 #   BASE=/path/with/lots/of/space PY=$BASE/bon-env/bin/python \
 #   nohup bash jobs/run_local.sh <dataset> <gpu id> <chunk> [<chunk> ...] > logs/gpu0.log 2>&1 &

@@ -2,7 +2,7 @@
 
 **Objective:** Evaluate how reliably the optimal Best-of-N sample size can be estimated from limited calibration data.
 
-Code: [`simulation.py`](simulation.py) · Figure: [`simulation.png`](simulation.png)
+Code: [`simulation.py`](../experiments/synthetic/simulation.py) · Figure: [`simulation.png`](simulation.png)
 
 ## Setup
 

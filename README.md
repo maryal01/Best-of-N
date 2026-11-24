@@ -31,4 +31,4 @@ The proofs are in `proof/bon_monotonicity.pdf`
 
 ## Project overview
 
-See [`AGENTS.md`](AGENTS.md) for the project state, the experiment index (`experiments/*/*_RESULTS.md`) and compute notes.
+See [`AGENTS.md`](AGENTS.md) for the project state, the experiment index (`docs/`) and compute notes.

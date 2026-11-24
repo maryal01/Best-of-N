@@ -2,7 +2,7 @@
 
 **Question:** on real LLM data, does accuracy of the kept answer keep rising with N, or does it peak and decline (reward over-optimization)?
 
-Code: [`run_experiment.py`](../../run_experiment.py) · Data: `table.csv`, `results/math500_*.csv` (repo root)
+Code: [`run_experiment.py`](../run_experiment.py) · Data: `table.csv`, `results/math500_*.csv`
 
 ## Setup
 

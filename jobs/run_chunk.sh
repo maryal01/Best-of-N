@@ -1,7 +1,7 @@
 #!/bin/bash
 # Runs ONE chunk of initialize_experiment.py on the GPU(s) this shell can see.
 # No Slurm inside, so the same script is used by jobs/gilbreth.sub (Slurm) and by
-# jobs/run_local.sh (plain machines such as porsche / ferrari).
+# jobs/run_local.sh (plain GPU workstations).
 #
 #   bash jobs/run_chunk.sh <dataset> <chunk index>        dataset: gsm8k | math500 | math
 #

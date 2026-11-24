@@ -195,6 +195,6 @@ for row, (name, res) in zip(axes, results.items()):
     ax3.set_title("Regret vs. data size")
 
 plt.tight_layout()
-figure_path = Path(__file__).with_name("simulation.png")      # saved next to this script
+figure_path = Path(__file__).resolve().parents[2] / "docs" / "simulation.png"
 plt.savefig(figure_path, dpi=150, bbox_inches="tight")
 print(f"saved {figure_path}")
