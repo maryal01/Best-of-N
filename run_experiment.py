@@ -1,12 +1,18 @@
 import csv
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 rng = np.random.default_rng(0)
 
+# python run_experiment.py                     -> table.csv, plot in accuracy_curve.png
+# python run_experiment.py results/x.csv       -> that table, plot in results/x_accuracy_curve.png
+TABLE = sys.argv[1] if len(sys.argv) > 1 else "table.csv"
+PLOT = TABLE.replace(".csv", "_accuracy_curve.png") if len(sys.argv) > 1 else "accuracy_curve.png"
+
 groups = {}
-for row in csv.DictReader(open("table.csv")):
+for row in csv.DictReader(open(TABLE)):
     groups.setdefault(row["question_id"], []).append((float(row["score"]), int(row["correct"])))
 
 questions = [(np.array([s for s, _ in g]), np.array([c for _, c in g])) for g in groups.values()]
@@ -41,4 +47,4 @@ if true_N < M:
 plt.plot(range(1, M + 1), curve, lw=2)
 plt.xlabel("N (answers sampled)")
 plt.ylabel("accuracy of the kept answer")
-plt.savefig("accuracy_curve.png", dpi=150, bbox_inches="tight")
+plt.savefig(PLOT, dpi=150, bbox_inches="tight")
