@@ -14,13 +14,21 @@ import hashlib
 import json
 import os
 import re
+import time
 
 import torch
 from datasets import concatenate_datasets, load_dataset
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from vllm import LLM, SamplingParams
 
+from scoring import score_batched
+
 ANSWERS_PER_QUESTION = 256
+
+T0 = time.time()
+def stamp(msg):
+    """Print a message with the minutes elapsed since the script started (to see which stage is slow)."""
+    print(f"[{(time.time() - T0) / 60:6.1f} min] {msg}", flush=True)
 
 GENERATOR = "Qwen/Qwen2.5-Math-1.5B-Instruct"
 WEAKER_GENERATOR = "Qwen/Qwen2.5-0.5B-Instruct"
@@ -111,7 +119,7 @@ else:
                 f.write(json.dumps(a) + "\n")
         os.replace(ANSWERS + ".tmp", ANSWERS)
 
-print(f"{len(answers)} answers to {len(questions)} questions")
+stamp(f"{len(answers)} answers to {len(questions)} questions ready (generated or loaded)")
 
 # ---------- 3. Check each answer against the answer key ----------
 def final_answer(text):
@@ -147,13 +155,14 @@ for a in answers:
     a["correct"] = int(is_correct(a["answer"], a["question_id"]))
 
 acc = sum(a["correct"] for a in answers) / len(answers)
-print(f"Fraction of answers correct: {acc:.3f}")
+stamp(f"graded; fraction of answers correct: {acc:.3f}")
 
 # ---------- 4. Score every answer with each reward model ----------
+# Batched (see scoring.py). SCORE_TOKEN_BUDGET = max tokens per batch.
+SCORE_TOKEN_BUDGET = int(os.environ.get("SCORE_TOKEN_BUDGET", 32768))
+pairs = [(questions[a["question_id"]], a["answer"]) for a in answers]
+
 for scorer in SCORERS:
-    # The OpenAssistant (DeBERTa) reward model takes a (question, answer) pair and reads at
-    # most 512 tokens. Cut from the front, so the end of the question and the final
-    # \boxed{} answer are always kept ("longest_first" also handles questions over 512).
     pair_input = "deberta" in scorer.lower()
     rm_tok = AutoTokenizer.from_pretrained(scorer)
     if pair_input:
@@ -164,36 +173,14 @@ for scorer in SCORERS:
         device_map="cuda",
         num_labels=1)
 
+    scores = score_batched(rm, rm_tok, pair_input, pairs, SCORE_TOKEN_BUDGET)
+    stamp(f"scored with {scorer}")
+
     out = OUT if len(SCORERS) == 1 else OUT.replace(".csv", f"_{scorer.split('/')[-1]}.csv")
     with open(out, "w") as f:
         w = csv.writer(f)
         w.writerow(["question_id", "score", "correct"])
-
-        for i, a in enumerate(answers):
-            q = questions[a["question_id"]]
-            if pair_input:
-                inputs = rm_tok(
-                    q, a["answer"],
-                    truncation="longest_first",
-                    max_length=512,
-                    return_tensors="pt").to("cuda")
-            else:
-                chat = [
-                    {"role": "user", "content": q},
-                    {"role": "assistant", "content": a["answer"]}
-                ]
-                inputs = rm_tok.apply_chat_template(
-                    chat,
-                    tokenize=True,
-                    return_dict=True,
-                    return_tensors="pt").to("cuda")
-
-            with torch.no_grad():
-                score = rm(**inputs).logits[0][0].item()
-            w.writerow([START + a["question_id"], score, a["correct"]])
-
-            if i % 500 == 0:
-                print(f"{scorer}: scored {i}/{len(answers)}")
+        w.writerows([START + a["question_id"], sc, a["correct"]] for a, sc in zip(answers, scores))
 
     print(f"saved {out}")
     del rm

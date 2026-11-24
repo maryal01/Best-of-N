@@ -1,0 +1,29 @@
+#!/bin/bash
+# Slurm array job for Purdue Gilbreth: one chunk of initialize_experiment.py per array task.
+# Account aliaga has almost no high-priority GPU quota, so we use the preemptible `standby`
+# QoS (4h limit, up to 24 GPUs per user, any idle GPU). A preempted task is requeued; its
+# generated answers are reused, so only scoring is repeated.
+#
+# One-time:  BASE=$RCAC_SCRATCH bash jobs/setup_env.sh        (nothing goes to $HOME)
+# Submit from the repo root, after  mkdir -p logs :
+#   sbatch --array=0   jobs/gilbreth.sub math      # one chunk first: measure the time
+#   sbatch --array=1-29 jobs/gilbreth.sub math     # then the rest (30 chunks = 3,000 questions)
+# Datasets: gsm8k | math500 | math (see jobs/run_chunk.sh). Merge the parts per scorer afterwards, e.g.
+#   head -n 1 results/math_part0.csv > results/math_skywork.csv
+#   tail -q -n +2 results/math_part*.csv >> results/math_skywork.csv
+#
+#SBATCH --job-name=bon-init
+#SBATCH -A aliaga
+#SBATCH --partition=a100-80gb,a100-40gb,a30
+#SBATCH --qos=standby
+#SBATCH --time=04:00:00
+#SBATCH --requeue
+#SBATCH --nodes=1
+#SBATCH --gpus-per-node=1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=32G
+#SBATCH --output=logs/%x-%A_%a.out
+
+set -euo pipefail
+cd "$SLURM_SUBMIT_DIR"
+bash jobs/run_chunk.sh "${1:-math}" "${SLURM_ARRAY_TASK_ID:-0}"
