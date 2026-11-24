@@ -3,7 +3,7 @@
 # caches, Python build, temp files, HF cache) goes under BASE, NOTHING is written to $HOME.
 #   BASE=$RCAC_SCRATCH bash jobs/setup_env.sh
 # Result: $BASE/bon-env/bin/python   (use it as PY in the job scripts)
-# Optional: VLLM_SPEC="vllm==0.11.0"  UV_ARGS="--torch-backend=cu128"  for machines whose NVIDIA driver is
+# Optional: VLLM_SPEC="vllm==0.11.0"  TRANSFORMERS_SPEC="transformers<5"  DATASETS_SPEC="datasets>=4,<4.5"  UV_ARGS="--torch-backend=cu128"  for machines whose NVIDIA driver is
 # too old for the newest torch build (drivers older than about 580 need a cu12x build; a recent driver works with the default).
 set -euo pipefail
 BASE=${BASE:?set BASE to a big non-home directory, e.g. \$RCAC_SCRATCH or a /data/\$USER folder}
@@ -26,5 +26,5 @@ fi
 
 [[ -x $BASE/bon-env/bin/python ]] || "$UV" venv --python 3.12 "$BASE/bon-env"
 "$UV" pip install --python "$BASE/bon-env/bin/python" ${UV_ARGS:-} \
-    "${VLLM_SPEC:-vllm}" transformers accelerate datasets math-verify numpy scipy matplotlib
+    "${VLLM_SPEC:-vllm}" "${TRANSFORMERS_SPEC:-transformers}" accelerate "${DATASETS_SPEC:-datasets}" math-verify numpy scipy matplotlib
 "$BASE/bon-env/bin/python" -c "import vllm, torch, transformers; print('OK vllm', vllm.__version__, 'torch', torch.__version__)"
