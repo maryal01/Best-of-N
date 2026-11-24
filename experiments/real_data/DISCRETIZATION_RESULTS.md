@@ -2,7 +2,7 @@
 
 **Question:** if we replace the continuous reward score by K discrete levels, does the K-level model still predict the real best N, **even with unlimited calibration data**? (This isolates discretization error from finite-data error.)
 
-Code: [`discretization_check.py`](discretization_check.py) (`python discretization_check.py <table.csv> ...`)
+Code: [`discretization_check.py`](discretization_check.py) (`python experiments/real_data/discretization_check.py <table.csv> ...`)
 
 ## Setup
 

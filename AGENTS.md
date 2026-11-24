@@ -6,7 +6,7 @@ Proposal: `proposal.pdf`. Proofs: `proof/proof.pdf`, `proof/verify_proof.py`.
 
 User preferences: chat in Turkish; code simple, readable, commented, **no nested loops**; state assumptions
 explicitly; **commit/push only when asked**. Work on `main` (keep the number of branches small). Push needs SSH:
-`origin` is `git@github.com:maryal01/Best-of-N.git`. Results go in their own `*_RESULTS.md` files, not in this file.
+`origin` is `git@github.com:maryal01/Best-of-N.git`. Results go in the `*_RESULTS.md` file next to each experiment, not in this file. Run scripts from the repo root.
 
 ## Model
 Verifier score S has K ordered levels, `p_j = P(S=s_j)`, `m_j = E[U|S=s_j]`, U in {0,1} (correct).
@@ -18,12 +18,12 @@ Estimation: plug-in `p_hat_j`, `m_hat_j` from calibration data, `N_hat = argmax 
 ## Where the results are
 | Doc | Contents | Code |
 |---|---|---|
-| [`REAL_CURVES_RESULTS.md`](REAL_CURVES_RESULTS.md) | real Best-of-N curves, GSM8K and MATH-500, two scorers; only MATH-500 + DeBERTa has a significant peak (N*=2) | `run_experiment.py` |
-| [`SIMULATION_RESULTS.md`](SIMULATION_RESULTS.md) | synthetic finite-data simulation, 3 regimes of a rare top level | `simulation.py` |
-| [`DISCRETIZATION_RESULTS.md`](DISCRETIZATION_RESULTS.md) | does the K-level rank model reproduce the real best N with unlimited data? | `discretization_check.py` |
-| [`CALIBRATION_SWEEP_RESULTS.md`](CALIBRATION_SWEEP_RESULTS.md) | regret vs number of calibration questions on real data | `calibration_sweep.py` |
+| [`experiments/real_data/REAL_CURVES_RESULTS.md`](experiments/real_data/REAL_CURVES_RESULTS.md) | real Best-of-N curves, GSM8K and MATH-500, two scorers; only MATH-500 + DeBERTa has a significant peak (N*=2) | `run_experiment.py` |
+| [`experiments/synthetic/SIMULATION_RESULTS.md`](experiments/synthetic/SIMULATION_RESULTS.md) | synthetic finite-data simulation, 3 regimes of a rare top level | `experiments/synthetic/simulation.py` |
+| [`experiments/real_data/DISCRETIZATION_RESULTS.md`](experiments/real_data/DISCRETIZATION_RESULTS.md) | does the K-level rank model reproduce the real best N with unlimited data? | `experiments/real_data/discretization_check.py` |
+| [`experiments/real_data/CALIBRATION_SWEEP_RESULTS.md`](experiments/real_data/CALIBRATION_SWEEP_RESULTS.md) | regret vs number of calibration questions on real data | `experiments/real_data/calibration_sweep.py` |
 
-Gotcha already fixed in `simulation.py`: if the top level is unseen (`p_hat3=0`) the estimated curve is flat after `b^N`
+Gotcha already fixed in `experiments/synthetic/simulation.py`: if the top level is unseen (`p_hat3=0`) the estimated curve is flat after `b^N`
 underflows to 0, so `argmax` stopped at N~55 instead of `N_MAX` and understated regret about 2x. The code sets `N_MAX` explicitly.
 
 ## Repo map
@@ -34,6 +34,7 @@ underflows to 0, so `argmax` stopped at N~55 instead of `N_MAX` and understated 
 | `run_experiment.py` | real accuracy curve + bootstrap test of the decline after the best N |
 | `jobs/setup_env.sh`, `run_chunk.sh`, `gilbreth.sub`, `run_local.sh` | environment setup and chunk runners (see Compute). `jobs/scholar.sub` is the old Scholar version |
 | `results/*.csv`, `table.csv` | tables `question_id,score,correct`, 256 rows per question (GSM8K 1319 q; MATH-500 500 q with Skywork-0.6B and DeBERTa) |
+| `experiments/synthetic/`, `experiments/real_data/` | one folder per experiment family: code, figure and `*_RESULTS.md` together |
 | `proof/` | monotonicity / optimal-N proofs and numerical checks |
 
 ## In progress / next

@@ -1,9 +1,9 @@
 # Calibration sweep on real LLM data
 
-**Question:** on real data, how does the regret of the estimated best N shrink as we use more calibration questions? (Does the synthetic result of [`SIMULATION_RESULTS.md`](SIMULATION_RESULTS.md) hold on real data?)
+**Question:** on real data, how does the regret of the estimated best N shrink as we use more calibration questions? (Does the synthetic result of [`SIMULATION_RESULTS.md`](../synthetic/SIMULATION_RESULTS.md) hold on real data?)
 
 Code: [`calibration_sweep.py`](calibration_sweep.py) · Figure: [`calibration_sweep.png`](calibration_sweep.png)
-`python calibration_sweep.py results/math500_reward-model-deberta-v3-large-v2.csv results/math500_Skywork-Reward-V2-Qwen3-0.6B.csv table.csv`
+`python experiments/real_data/calibration_sweep.py results/math500_reward-model-deberta-v3-large-v2.csv results/math500_Skywork-Reward-V2-Qwen3-0.6B.csv table.csv`
 
 ## Procedure (per random split, 1000 splits)
 

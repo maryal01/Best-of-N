@@ -104,5 +104,5 @@ Limited calibration data can cause severe overestimation of the optimal sampling
 
 ```bash
 pip install numpy matplotlib
-python simulation.py        # prints the tables above and writes simulation.png
+python experiments/synthetic/simulation.py        # prints the tables above and writes simulation.png
 ```

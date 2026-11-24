@@ -15,7 +15,7 @@ We compare three curves (accuracy of the kept answer vs N):
   iid      : same, but drawn WITH replacement. This is the i.i.d. setting the model assumes.
   model    : discrete K-level model, V(N) = sum_j m_j (F_j^N - F_{j-1}^N)
 
-Run:  python discretization_check.py results/math500_reward-model-deberta-v3-large-v2.csv ...
+Run from the repo root:  python experiments/real_data/discretization_check.py results/math500_reward-model-deberta-v3-large-v2.csv ...
 """
 import csv
 import sys

@@ -28,3 +28,7 @@ prints a bootstrap-over-questions 95% interval for the decline. The decline is
 significant only if that interval excludes zero.
 
 The proofs are in `proof/bon_monotonicity.pdf`
+
+## Project overview
+
+See [`AGENTS.md`](AGENTS.md) for the project state, the experiment index (`experiments/*/*_RESULTS.md`) and compute notes.

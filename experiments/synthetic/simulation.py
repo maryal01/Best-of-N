@@ -12,8 +12,10 @@ For each parameter regime (how rare the top level s3 is) we:
    estimate p_j, m_j, plug them into the same formula, get N*_hat.
 3. Regret = V(N*) - V(N*_hat), where V is always the TRUE curve.
 
-Run:  python simulation.py        (needs numpy, matplotlib)
+Run:  python experiments/synthetic/simulation.py        (needs numpy, matplotlib)
 """
+from pathlib import Path
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -193,5 +195,6 @@ for row, (name, res) in zip(axes, results.items()):
     ax3.set_title("Regret vs. data size")
 
 plt.tight_layout()
-plt.savefig("simulation.png", dpi=150, bbox_inches="tight")
-print("saved simulation.png")
+figure_path = Path(__file__).with_name("simulation.png")      # saved next to this script
+plt.savefig(figure_path, dpi=150, bbox_inches="tight")
+print(f"saved {figure_path}")
