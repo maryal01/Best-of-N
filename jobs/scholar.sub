@@ -1,16 +1,40 @@
 #!/bin/bash
-# FILENAME: train.sub
-# Slurm job that runs initialize_experiment.py (generate, score and grade GSM8K answers)
-# on Purdue's Scholar cluster. Scholar caps a job at 4h (normal QoS; long is not allowed),
-# so the 1319 questions are split into chunks of CHUNK, one array task (one A40) per chunk.
-# Submit from the project directory:
-#   sbatch --array=0 train.sub      # first chunk only: check it works and how long it takes
-#   sbatch --array=1-6 train.sub    # then the rest (0-6 covers 7 x 200 >= 1319 questions)
-# Each task writes results/table_256_part<k>.csv. When all 7 exist, merge them:
-#   head -n 1 results/table_256_part0.csv > table.csv
-#   tail -q -n +2 results/table_256_part*.csv >> table.csv
-# then run run_experiment.py. A task killed at the 4h limit leaves no part file: lower
-# CHUNK, raise the array range to cover 1319 questions, and resubmit only missing parts.
+# FILENAME: jobs/scholar.sub
+# Slurm job that runs initialize_experiment.py (generate, grade and score answers) on
+# Purdue's Scholar cluster. Scholar caps a job at 4h (normal QoS; long is not allowed), so
+# the questions are split into chunks of CHUNK, one array task (one A40) per chunk.
+# Submit from the repo root (or from jobs/ with plain scholar.sub). The argument picks the
+# dataset (default gsm8k); run task 0 alone first to check it works and how long it takes.
+#
+# GSM8K (1319 questions, 7 chunks of 200, scored by Skywork-V2-Qwen3-0.6B):
+#   sbatch --array=0 jobs/scholar.sub          then   sbatch --array=1-6 jobs/scholar.sub
+#   Each task writes results/table_256_part<k>.csv. Merge:
+#     head -n 1 results/table_256_part0.csv > table.csv
+#     tail -q -n +2 results/table_256_part*.csv >> table.csv
+#
+# MATH-500 (500 harder questions, 5 chunks of 100, answers up to 2048 tokens), scored by
+# both Skywork-V2-Qwen3-0.6B and the weaker OpenAssistant DeBERTa reward model:
+#   sbatch --array=0 jobs/scholar.sub math500  then   sbatch --array=1-4 jobs/scholar.sub math500
+#   Each task writes results/math500_part<k>_<scorer>.csv, one per scorer. Merge per scorer:
+#     for s in Skywork-Reward-V2-Qwen3-0.6B reward-model-deberta-v3-large-v2; do
+#       head -n 1 results/math500_part0_$s.csv > results/math500_$s.csv
+#       tail -q -n +2 results/math500_part*_$s.csv >> results/math500_$s.csv
+#     done
+#   then: python run_experiment.py results/math500_<scorer>.csv
+#
+# MATH held-out (the 4,500 MATH test questions not in MATH-500, in a fixed random order),
+# scored by Skywork-V2-Qwen3-0.6B only. Re-tests the MATH-500 peak on new data: is accuracy
+# at N=64 (chosen from MATH-500, before seeing these) higher than at N=256? Fix the number of
+# questions before looking: 30 chunks = 3,000 questions, ~94% power for a 1-point decline.
+#   sbatch --array=0 jobs/scholar.sub math     then   sbatch --array=1-29 jobs/scholar.sub math
+#   Each task writes results/math_part<k>.csv. Merge, then test at the pre-chosen N:
+#     head -n 1 results/math_part0.csv > results/math_skywork.csv
+#     tail -q -n +2 results/math_part*.csv >> results/math_skywork.csv
+#     python run_experiment.py results/math_skywork.csv 64
+#
+# Generated answers are saved to $RCAC_SCRATCH/bon_answers/, so resubmitting a task that
+# was killed while scoring skips generation. A task killed during generation leaves no
+# output: lower CHUNK, widen the array range to cover all questions, resubmit missing parts.
 #
 # Python: vLLM needs Python >= 3.10, but Scholar's /usr/bin/python3 is 3.9. One-time setup
 # on a login node: a Python 3.12 venv on scratch, built with uv (no conda):
@@ -18,9 +42,11 @@
 #   python3 -m pip install --user uv
 #   ~/.local/bin/uv venv --python 3.12 $RCAC_SCRATCH/bon-env
 #   ~/.local/bin/uv pip install --python $RCAC_SCRATCH/bon-env/bin/python \
-#       vllm transformers datasets numpy matplotlib
+#       vllm transformers accelerate datasets math-verify numpy matplotlib
+# (Already set up for GSM8K? Add the MATH-500 grader:
+#   ~/.local/bin/uv pip install --python $RCAC_SCRATCH/bon-env/bin/python math-verify )
 # The job uses that env. To use a different interpreter, pass its path:
-#   sbatch --export=ALL,PY=/path/to/python train.sub
+#   sbatch --export=ALL,PY=/path/to/python jobs/scholar.sub
 #
 #SBATCH --job-name=bon-init
 #SBATCH -A scholar
@@ -37,10 +63,38 @@
 
 set -euo pipefail
 cd "$SLURM_SUBMIT_DIR"
+# Works whether submitted from the repo root (sbatch jobs/scholar.sub) or from jobs/.
+[[ -f initialize_experiment.py ]] || cd ..
+
+export DATASET=${1:-gsm8k}
+case $DATASET in
+    gsm8k)
+        N_QUESTIONS=1319; CHUNK=200
+        OUT_PREFIX=results/table_256_part ;;
+    math500)
+        N_QUESTIONS=500; CHUNK=100
+        OUT_PREFIX=results/math500_part
+        export MAX_TOKENS=2048
+        export SCORERS=Skywork/Skywork-Reward-V2-Qwen3-0.6B,OpenAssistant/reward-model-deberta-v3-large-v2 ;;
+    math)
+        N_QUESTIONS=4500; CHUNK=100
+        OUT_PREFIX=results/math_part
+        export MAX_TOKENS=2048
+        export SCORERS=Skywork/Skywork-Reward-V2-Qwen3-0.6B ;;
+    *)
+        echo "Unknown dataset '$DATASET'; use gsm8k, math500 or math." >&2
+        exit 1 ;;
+esac
+TASK=${SLURM_ARRAY_TASK_ID:-0}
+export START=$((TASK * CHUNK)) END=$(((TASK + 1) * CHUNK))
+if (( START >= N_QUESTIONS )); then
+    echo "Task $TASK starts at question $START, past the $N_QUESTIONS in $DATASET; nothing to do."
+    exit 0
+fi
 
 PY=${PY:-$RCAC_SCRATCH/bon-env/bin/python}
 if [[ ! -x $PY ]] && ! command -v "$PY" >/dev/null; then
-    echo "No Python at $PY; do the one-time setup at the top of train.sub first." >&2
+    echo "No Python at $PY; do the one-time setup at the top of jobs/scholar.sub first." >&2
     exit 1
 fi
 
@@ -48,6 +102,15 @@ fi
 export HF_HOME=$RCAC_SCRATCH/hf_cache
 export VLLM_CACHE_ROOT=$RCAC_SCRATCH/vllm_cache
 mkdir -p "$HF_HOME" "$VLLM_CACHE_ROOT" results
+
+# Kernel compile caches default to ~/.triton etc. on NFS, shared by every array task.
+# Tasks starting together then read files another task is rewriting and crash with
+# "OSError: [Errno 116] Stale file handle". Give each task its own copy on local disk.
+LOCAL_CACHE=${TMPDIR:-/tmp}/bon-$SLURM_JOB_ID
+export TRITON_CACHE_DIR=$LOCAL_CACHE/triton
+export TORCHINDUCTOR_CACHE_DIR=$LOCAL_CACHE/inductor
+mkdir -p "$TRITON_CACHE_DIR" "$TORCHINDUCTOR_CACHE_DIR"
+trap 'rm -rf "$LOCAL_CACHE"' EXIT
 
 echo "Job $SLURM_JOB_ID on $(hostname), started $(date), python: $PY ($("$PY" --version 2>&1))"
 nvidia-smi
@@ -61,19 +124,22 @@ import sys
 if sys.version_info < (3, 10):
     sys.exit(f"Python {sys.version.split()[0]} is too old for vLLM; need 3.10+")
 from vllm import LLM, SamplingParams
-import transformers, datasets, torch
+import transformers, accelerate, datasets, torch  # accelerate: needed for device_map="cuda"
+import os
+if os.environ["DATASET"] in ("math500", "math"):
+    import math_verify  # grades MATH's LaTeX answers
 if not torch.cuda.is_available():
     sys.exit("torch cannot use the GPU")
 print("packages OK: torch", torch.__version__, "on", torch.cuda.get_device_name(0))
 EOF
 
-CHUNK=200
-TASK=${SLURM_ARRAY_TASK_ID:-0}
-export START=$((TASK * CHUNK)) END=$(((TASK + 1) * CHUNK))
-export OUT=results/table_256_part$TASK.csv
-echo "Chunk $TASK: questions $START to $((END - 1)) -> $OUT"
+export OUT=$OUT_PREFIX$TASK.csv
+mkdir -p "$RCAC_SCRATCH/bon_answers"
+export ANSWERS=$RCAC_SCRATCH/bon_answers/${DATASET}_part$TASK.jsonl
+echo "$DATASET chunk $TASK: questions $START to $((END - 1)) -> $OUT (answers saved to $ANSWERS)"
 
 "$PY" -u initialize_experiment.py
 
 echo "Finished $(date)"
+
 
