@@ -65,4 +65,5 @@ CodeScaler-1.7B (code reward model, gets the last code block) and the DeBERTa re
 - **Selection caveat:** every one of the 507 rows contains both passing and failing solutions (pass@32 = 1.0, no row with all or none passing), i.e. PPE kept tasks with mixed outcomes. Accuracies (0.56 to 0.87) are therefore not MBPP+ accuracies and the gain from Best-of-N is inflated.
 - Conclusion: with N <= 32 this dataset behaves like a monotone control (similar to GSM8K), not like MATH-500 + DeBERTa. It is not a setting where estimating the best N is interesting (best N = N_max, regret is trivial), so no calibration sweep was run on it. A peak, if any, would need larger N (own generation, e.g. Qwen2.5-Coder-1.5B-Instruct with 256 samples) or a scorer that is easier to fool.
 - Any calibration/eval split on this data must group by `task_id` (several rows share a task).
+- With our own generation of 256 solutions per problem (so N up to 256), see [`CODING_RESULTS.md`](CODING_RESULTS.md): a flat curve with at most a very weak, not significant decline for CodeScaler.
 

@@ -99,6 +99,19 @@ Held-out MATH (paired difference, layout minus empirical; 10 / 25 / 50 / 100 / 2
 - **The outcome depends on the layout and the table**, not uniformly in our favour: on Skywork-MATH-500 K=3 and K=5 equal win at every size while K=3 top 5% loses (its floor is 0.012); on GSM8K (monotone curve) the model with K=3 equal loses at every size, K=5 equal is roughly tied, and K=3 top 5% wins.
 - Honest summary: the model is a **small-data advantage**, which matches the motivation of the project, but it is not a free win; a poorly chosen layout (floor too high) loses to the plain empirical method.
 
+## A layout that resolves the top tail: K=6 dyadic
+
+Added after the PPE tables ([`PPE_RESULTS.md`](PPE_RESULTS.md)), where coarse equal-mass levels missed a peak at the top 5-10% of the scores. Level masses halve towards the top (bottom 50%, 25%, 12.5%, 6.25%, 3.1%, 3.1%), one level per power of two N. Mean regret, 10 / 25 / 50 / 100 calibration questions (empirical method in brackets):
+
+| Table | K=6 dyadic | Empirical | Floor of dyadic |
+|---|---|---|---|
+| MATH-500 + DeBERTa (N*=2) | 0.0156 / 0.0115 / 0.0089 / 0.0048 | 0.0170 / 0.0112 / 0.0070 / 0.0033 | 0.0004 |
+| MATH-500 + Skywork (N*=70) | 0.0138 / 0.0111 / 0.0100 / 0.0100 | 0.0122 / 0.0088 / 0.0067 / 0.0054 | 0.0118 |
+| GSM8K + Skywork (N*=256) | 0.0087 / 0.0062 / 0.0048 / 0.0039 | 0.0072 / 0.0058 / 0.0045 / 0.0039 | 0.0001 |
+| MATH held-out (ours) + Skywork (N*=29) | 0.0067 / 0.0040 / 0.0029 / 0.0025 | 0.0065 / 0.0043 / 0.0033 / 0.0028 | 0.0011 |
+
+On these tables the dyadic layout behaves about like the empirical method (better with few calibration questions in some, slightly worse with more on MATH-500 + Skywork, whose floor is 0.0118). Its advantage is on tables with a peak in the top tail, where equal-mass layouts fail.
+
 ## Findings
 
 - **Regret decreases with calibration size in every setting**, qualitatively matching the synthetic simulation.
