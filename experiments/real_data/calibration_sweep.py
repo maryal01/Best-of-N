@@ -35,7 +35,7 @@ LAYOUTS = {                                   # level masses p_j, lowest score f
 EMPIRICAL = "Empirical (direct)"            # name of the baseline in the tables and the figure
 N_SPLITS = 1000                               # random calibration/eval splits per setting
 EVAL_FRACTION = 0.8
-CAL_SIZES = [10, 25, 50, 100, 200]            # calibration questions (cut to what the 20% pool has)
+CAL_SIZES = [10, 25, 50, 100, 200, 400, 600]   # calibration questions (cut to what the 20% pool has)
 
 
 def model_coefficients(p, n_max):
@@ -46,13 +46,13 @@ def model_coefficients(p, n_max):
     return F[None, :] ** N - F_prev[None, :] ** N            # (n_max, K)
 
 
-def run_layout(sorted_correct, p, cal_idx, eval_idx, real_eval, sizes, n_max):
+def run_layout(L, p, cal_mean, eval_mean, real_eval, sizes, n_max):
     """
-    sorted_correct: (questions, L).  cal_idx (splits, pool) and eval_idx (splits, n_eval): the splits.
+    L: answers per question.  cal_mean[size] (splits, L): mean sorted correctness of the first `size` calibration
+    questions of each split.  eval_mean (splits, L): the same for the eval questions.
     real_eval: (splits, n_max) real accuracy curve on each split's eval set.
     Returns {size: dict(N_hat, regret)} plus the discretization regret per split.
     """
-    L = sorted_correct.shape[1]
     weights = level_weights(L, np.asarray(p))                # (L, K)
     coeff = model_coefficients(np.asarray(p), n_max)         # (n_max, K)
 
@@ -60,27 +60,27 @@ def run_layout(sorted_correct, p, cal_idx, eval_idx, real_eval, sizes, n_max):
     regret_of = lambda N_hat: best_real - real_eval[np.arange(len(N_hat)), N_hat - 1]
 
     def one_size(size):
-        m_hat = sorted_correct[cal_idx[:, :size]].mean(axis=1) @ weights      # (splits, K)
+        m_hat = cal_mean[size] @ weights                                      # (splits, K)
         N_hat = np.argmax(m_hat @ coeff.T, axis=1) + 1
         return {"N_hat": N_hat, "regret": regret_of(N_hat)}
 
     # unlimited calibration data: m_j estimated on the eval questions themselves
-    m_full = sorted_correct[eval_idx].mean(axis=1) @ weights
+    m_full = eval_mean @ weights
     N_disc = np.argmax(m_full @ coeff.T, axis=1) + 1
 
     return {size: one_size(size) for size in sizes}, regret_of(N_disc)
 
 
-def run_empirical(sorted_correct, cal_idx, real_eval, sizes, n_max):
+def run_empirical(L, cal_mean, real_eval, sizes, n_max):
     """
     Direct empirical baseline: the real Best-of-N accuracy curve of the first `size` calibration questions
     (exact, N answers drawn without replacement), and N_hat = its argmax. Same output format as run_layout.
     """
-    W = real_weights(sorted_correct.shape[1], n_max)                       # (n_max, L)
+    W = real_weights(L, n_max)                                             # (n_max, L)
     best_real = real_eval.max(axis=1)
 
     def one_size(size):
-        curve = sorted_correct[cal_idx[:, :size]].mean(axis=1) @ W.T       # (splits, n_max)
+        curve = cal_mean[size] @ W.T                                       # (splits, n_max)
         N_hat = np.argmax(curve, axis=1) + 1
         return {"N_hat": N_hat, "regret": best_real - real_eval[np.arange(len(N_hat)), N_hat - 1]}
 
@@ -106,11 +106,19 @@ def sweep_table(path):
     perm = rng.permuted(np.tile(np.arange(Q), (N_SPLITS, 1)), axis=1)
     n_eval = int(round(EVAL_FRACTION * Q))
     pool = Q - n_eval
-    eval_idx, cal_idx = perm[:, pool:], perm[:, :pool]
+    cal_idx = perm[:, :pool]
     sizes = [s for s in CAL_SIZES if s <= pool]
+    L = sorted_correct.shape[1]
+
+    # Mean sorted correctness of the first `size` calibration questions, for every size at once (cumulative sum),
+    # and of the eval questions (everything not in the pool: total minus pool). Computed once, reused by all methods.
+    cal_cumsum = np.cumsum(sorted_correct[cal_idx], axis=1)                       # (splits, pool, L)
+    cal_mean = {size: cal_cumsum[:, size - 1] / size for size in sizes}
+    eval_mean = (sorted_correct.sum(axis=0) - cal_cumsum[:, -1]) / n_eval         # (splits, L)
+    del cal_cumsum
 
     # real accuracy curve on each split's eval questions (linear in the mean correctness)
-    real_eval = sorted_correct[eval_idx].mean(axis=1) @ real_weights(sorted_correct.shape[1], n_max).T
+    real_eval = eval_mean @ real_weights(L, n_max).T
     real_best_N = np.argmax(real_eval, axis=1) + 1
 
     print(f"\n=== {path}: {Q} questions x {n_max} answers; eval {n_eval} questions, calibration pool {pool}"
@@ -119,9 +127,9 @@ def sweep_table(path):
           f"mean accuracy lost by N=1 / N={n_max}: "
           f"{(real_eval.max(1) - real_eval[:, 0]).mean():.4f} / {(real_eval.max(1) - real_eval[:, -1]).mean():.4f}")
 
-    results = {name: run_layout(sorted_correct, p, cal_idx, eval_idx, real_eval, sizes, n_max)
+    results = {name: run_layout(L, p, cal_mean, eval_mean, real_eval, sizes, n_max)
                for name, p in LAYOUTS.items()}
-    results[EMPIRICAL] = (run_empirical(sorted_correct, cal_idx, real_eval, sizes, n_max), np.zeros(N_SPLITS))
+    results[EMPIRICAL] = (run_empirical(L, cal_mean, real_eval, sizes, n_max), np.zeros(N_SPLITS))
 
     for name, (by_size, disc_regret) in results.items():
         print(f"\n  {name}   (discretization regret with unlimited data: {disc_regret.mean():.4f})")
