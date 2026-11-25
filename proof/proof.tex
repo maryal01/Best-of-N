@@ -289,8 +289,8 @@ Lemma~\ref{lem:red} holds for any score distribution. If $S$ has continuous cdf 
 $m$ has bounded variation, \eqref{eq:D} becomes
 $\Delta(N)=\int F(s)^N(1-F(s))\,dm(s)$, and the kernel $F(s)^N=e^{N\ln F(s)}$ is totally
 positive, so the same variation-diminishing conclusion follows from Karlin's theorem
-(S.~Karlin, \emph{Total Positivity}, 1968). We do not need this here: the experiment below is
-an exact instance of the finite-$K$ model.
+(S.~Karlin, \emph{Total Positivity}, 1968). We do not need this here: the finite pools in the
+experiment below are covered by the finite-$K$ formula (Proposition~\ref{prop:rank}).
 \end{remark}
 
 \section{Connection to the LLM experiment}
@@ -298,7 +298,7 @@ an exact instance of the finite-$K$ model.
 The experiment draws, for each question $q$, a pool of $M$ scored answers and averages
 Best-of-$N$ accuracy over questions. Questions are heterogeneous, and an average of
 single-peaked curves need not be single-peaked, so one might worry that the theory does not
-transfer. It does, because ranks are quantiles.
+transfer. The \emph{formula} does, because ranks are quantiles.
 
 \begin{proposition}[Rank calibration]\label{prop:rank}
 For each question let $c_{q,j}\in\{0,1\}$ be the correctness of its $j$-th lowest-scored answer
@@ -324,37 +324,125 @@ with $N-1$ of the $j-1$ lower ranks. Monotonicity: a uniform $(N+1)$-subset is a
 $N$-subset plus one more element, so its maximum rank is pointwise no smaller.
 \end{proof}
 
-\paragraph{What the data show.}
-Computing $\bar m$ and the exact curves from the four result tables:
+\begin{remark}[What this does and does not test]\label{rem:identity}
+Proposition~\ref{prop:rank} is an identity: it reproduces \emph{any} observed curve from that
+curve's own rank calibration, so agreement with it is not evidence for the theory. Nor does
+Theorem~\ref{thm:K} restrict the raw curves much: at $M=256$ the empirical $\bar m$ has more than
+$150$ turning points, almost all sampling noise. What the data can test is whether a real
+scorer has an interior optimum, and whether a coarse three-level model predicts it.
+Tied scores are common (the Skywork scorers run in half precision); tied answers are given their
+mean correctness, which is uniform tie-breaking (Assumption~\ref{as:tie}).
+\end{remark}
+
+\subsection{Data}
+
+Unless noted, answers come from Qwen2.5-Math-1.5B-Instruct ($M=256$ per question, temperature $0.8$, top-$p$
+$0.95$) and are scored by a reward model: Skywork-Reward-V2-Qwen3-0.6B (``Skywork-0.6B'', the weak
+scorer), its 1.7B version (``Skywork-1.7B''), or OpenAssistant DeBERTa-v3-large (``DeBERTa''), a general-chat model not
+trained on mathematics. The weak generator is Qwen2.5-0.5B-Instruct. The held-out MATH set is a random $3{,}000$ of the
+$4{,}500$ MATH test questions that are not in MATH-500. All curves below are exact, and all intervals are $95\%$
+bootstrap intervals over questions; the bootstrap does not account for choosing a peak.
 
 \begin{center}
-\begin{tabular}{lcccc}
+\small
+\begin{tabular}{lrrccccr}
 \toprule
-run & $M$ & $\bar m$ by score-quantile bin & exact $\arg\max_N$ & shape \\
+run & $Q$ & $M$ & $V(1)$ & $V(16)$ & $V(64)$ & $V(M)$ & $\arg\max_N$ \\
 \midrule
-default scorer & 64 & increasing, top bin $0.950$ & $64$ & monotone \\
-weak scorer & 64 & increasing, top bin $0.920$ & $64$ & monotone \\
-weak scorer + weak generator & 64 & increasing, $0.24\to0.74$ & $64$ & monotone \\
-weak scorer & 256 & increasing up to top-2 ranks ($0.93$); rank 1: $0.92$ & $94$ & rise, then slight fall \\
+GSM8K, Skywork-1.7B                   & 100  & 64  & .859 & .922 & .950 & .950 & 64 \\
+GSM8K, Skywork-0.6B                   & 100  & 64  & .859 & .908 & .920 & .920 & 64 \\
+GSM8K, Skywork-0.6B, weak generator   & 100  & 64  & .439 & .670 & .740 & .740 & 64 \\
+GSM8K, Skywork-0.6B, first 100        & 100  & 256 & .852 & .911 & .928 & .920 & 95 \\
+GSM8K, Skywork-0.6B, all questions    & 1319 & 256 & .853 & .899 & .903 & .909 & 256 \\
+MATH-500, Skywork-0.6B                & 500  & 256 & .749 & .805 & .810 & .798 & 70 \\
+MATH held-out, Skywork-0.6B           & 3000 & 256 & .758 & .812 & .811 & .808 & 24 \\
+MATH-500, DeBERTa                     & 500  & 256 & .749 & .738 & .727 & .702 & 2 \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-The three monotone runs have (binned) nondecreasing $\bar m$, as Theorem~\ref{thm:aligned}
-requires. In the $M=256$ run the formula of Proposition~\ref{prop:rank}(ii) reproduces the
-simulated curve exactly (peak $0.9284$ at $N=94$, then $0.9200$ at $N=256$), and the decline
-is entirely attributable to the very top of the rank-calibration curve: the single
-highest-scored answer is correct for $92\%$ of questions, the next few for $93$--$94\%$.
-This is the one-tail-crossover mechanism of Theorem~\ref{thm:K}(iii).
+\subsection{Three shapes, and no confirmed interior optimum}
 
-\paragraph{Caveat.}
-The size of that decline, $V(94)-V(256)=0.0084$, is less than one question out of $100$.
-A bootstrap over questions gives a $95\%$ interval of $[-0.010,\,0.031]$, so the data do
-\emph{not} establish a crossover at conventional significance; coarse three-level fits
-(any split with a top level of $\ge 1\%$ of answers) have $m_1<m_2<m_3$ and predict a monotone curve.
-The honest summary is: the theory exactly explains every observed curve given its
-rank-calibration curve, the observed shapes are consistent with the theorems, and
-demonstrating a genuine interior optimum on this benchmark needs more questions or a
-weaker scorer.
+\begin{itemize}[leftmargin=*]
+\item \textbf{Rising.} On all $1{,}319$ GSM8K questions $V$ rises throughout, from $.853$ to $.909$,
+though only slowly after $N=16$: $V(256)-V(16)=.0100$, interval $[.0004,.0194]$.
+\item \textbf{Rise, then plateau.} On held-out MATH, Skywork-0.6B gains about five points by $N=16$ and then is
+flat. Its best $N$ is $24$, but $V(24)-V(256)=.0041$ with interval $[-.003,.011]$.
+\item \textbf{Falling.} On MATH-500, DeBERTa gives $V(1)-V(256)=.0473$, interval $[.0232,.0719]$. The small
+rise to $N=2$ ($.0020$, interval $[-.0010,.0050]$) is indistinguishable from zero, so $N=1$ and $N=2$ cannot
+be separated, and the curve is effectively nonincreasing.
+\end{itemize}
+
+\paragraph{Both apparent peaks failed to replicate.}
+Two runs showed an interior peak on a small sample. Neither survived more questions.
+
+\begin{center}
+\small
+\small
+\begin{tabular}{lll}
+\toprule
+peak seen in & decline to $N=256$ & same comparison, new questions \\
+\midrule
+GSM8K, first 100 ($N=94$) & $.0083$, $[-.0104,.0308]$ & $-.0053$, $[-.0119,.0011]$ (1{,}219 questions) \\
+MATH-500 ($N=64$) & $.0119$, $[-.0017,.0255]$ & $\phantom{-}.0028$, $[-.0030,.0086]$ (3{,}000 questions) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent Neither original decline was significant either. The second row is the only confirmatory test in this note:
+$N=64$ and the sample size were fixed, and committed to the repository, before the held-out data
+were generated. ($N=64$ was itself picked from the MATH-500 curve.) The design had about $94\%$ power for a true decline of one point. The held-out interval excludes the MATH-500 point
+estimate of $.0119$, but not a decline of up to about $.009$. The first row was not planned in advance.
+The practical lesson is that the argmax of a noisy curve on a few hundred questions readily produces a false peak.
+
+\subsection{Does a three-level model predict the curve?}
+
+We fit three-level models with within-question score bins of sizes (bottom, middle, top), using $\bar m$ from the same data, and applied
+Theorems \ref{thm:two}--\ref{thm:opt}. The $13$ binnings are tertiles, plus bottom $\in\{1/2,3/4,7/8,15/16\}$
+of the answers crossed with a top level of $1$, $2$ or $4$ answers. They were chosen after looking at the data. The grid
+includes all four $K=3$ binnings we had tried on MATH-500 with a top level of one or two answers, and tertiles; equal bins with $K=2$ and $K=4$, and other
+splits on the first $100$ GSM8K questions, were also tried.
+
+\begin{center}
+\small
+\begin{tabular}{lccccc}
+\toprule
+& \multicolumn{3}{c}{predicted shape (13 binnings)} & $N_{\mathrm{opt}}$ & $V(256)$ \\
+run ($M=256$) & increasing & peak & decreasing & if peaked & fit vs.\ data \\
+\midrule
+GSM8K, all questions   & 13 & 0 & 0 & --      & .891--.907 vs.\ .909 \\
+MATH-500, Skywork      & 10 & 3 & 0 & 28--76  & .794--.814 vs.\ .798 \\
+MATH held-out, Skywork & 5  & 8 & 0 & 25--86  & .804--.811 vs.\ .808 \\
+MATH-500, DeBERTa      & 0  & 4 & 9 & 2--4    & .715--.749 vs.\ .702 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent The fits get clear shapes right (GSM8K rises, DeBERTa essentially falls from the start). They do not
+locate $N_{\mathrm{opt}}$: where the top of the calibration curve is nearly flat, both the presence of a peak and
+its position depend on the binning. The fitted top-level drop $m_2-m_3$ in the held-out peaked fits is at most
+$.007$. The level of the curve is also off: every binning overestimates DeBERTa's $V(256)$ by at least $.013$,
+because the drop sits in the very top ranks (the single top answer is right for $70.2\%$ of questions,
+against $74.9\%$ for a random one) and coarse bins average it away. Tertiles, the natural default, miss the
+DeBERTa drop entirely (predicting $V(256)=.749$). These are in-sample fits; no held-out prediction of $N_{\mathrm{opt}}$ was attempted.
+
+\subsection{What was tried, and limitations}
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{Exploration.} Besides the runs above, we blended the Skywork and DeBERTa scores on
+MATH-500 at ten weights, looking for an interior peak; none showed both a significant rise and a significant
+decline, and the decline did not vary steadily with the weight. A cross-fitting analysis was discarded because resampled copies of a question could fall in both halves. The DeBERTa comparison was also computed from $N=16$, $64$ and $94$, all with intervals
+above zero; no multiplicity correction was applied.
+\item \textbf{DeBERTa rests on one dataset.} It has not been replicated. DeBERTa reads at most $512$ tokens, so longer answers were cut from the front,
+and part of its weakness may come from truncation.
+\item \textbf{Scope.} Three scorers, two generators and two benchmarks, all with $M\le256$: a peak beyond
+$N=256$, or for a scorer of intermediate quality, is not excluded.
+\end{itemize}
+
+\paragraph{Summary.}
+The theory says exactly when a three-level verifier produces a rising, falling or single-peaked
+curve. In the data, a scorer with useful, nearly flat-topped calibration rises to a plateau, and a scorer with no useful
+calibration and a bad top falls. We found no confirmed instance of the one-tail-crossover regime in between.
+That regime remains a theoretical possibility these experiments neither demonstrate nor rule out.
 
 \end{document}
