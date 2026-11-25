@@ -27,6 +27,19 @@ Accuracy of the kept answer (exact, N answers drawn without replacement), averag
 - **Each decline is not significant on its own** (512 questions, intervals include 0; the best N is chosen on the same data, which makes the test optimistic if anything). The consistent direction in three independent datasets is the evidence, not any single interval.
 - The loss from using N=32 instead of the best N is about 0.02 and from N=1 about 0.045: the peak matters, but sits at a small N.
 
+## Is the decline real? Selection-free and pooled tests
+
+The per-pair intervals above pick the best N on the same data (optimistic) and have low power. Two checks that remove the selection and add power (bootstrap over questions, 95% intervals; decline = accuracy at N0 minus accuracy at N=32):
+
+| Test | MATH + InternLM | MMLU-Pro + InternLM | GPQA + Skywork-Llama | Pooled (1,536 questions) |
+|---|---|---|---|---|
+| N0 chosen on the OTHER two pairs (leave-one-pair-out; N0 = 11, 8, 8) | +0.0200 [-0.006, +0.046] | +0.0165 [-0.012, +0.045] | +0.0225 [-0.006, +0.051] | **+0.0196 [+0.004, +0.035]** |
+| Fixed N0 = 8 for all (post hoc, common to the three peaks) | +0.0228 [-0.006, +0.051] | +0.0165 [-0.012, +0.045] | +0.0225 [-0.006, +0.050] | **+0.0206 [+0.004, +0.037]** |
+
+- **Each pair alone is underpowered, not refuted:** the per-question standard deviation of the decline is about 0.33, so detecting a decline of 0.02 with 80% power needs about 1,600 to 3,000 questions per pair; each table has 512.
+- **Pooled over the three pairs (selection-free) the decline is significant: about 0.02, 95% interval [+0.004, +0.035].** The qualitative claim (accuracy peaks at a small N and falls by N=32) holds on average across the paper's pairs, with a small effect size.
+- Consequence for the project: the stake of choosing N well in these settings is small (at most about 0.02 to 0.05 accuracy); the interesting regimes are those with a sharper loss (MATH-500 + DeBERTa, -0.049) and the synthetic rare-top-level worlds.
+
 ## Calibration sweep (K-level model vs direct empirical)
 
 ![Calibration sweep on the PPE tables](ppe_sweep.png)
