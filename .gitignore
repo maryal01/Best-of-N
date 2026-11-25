@@ -2,3 +2,6 @@
 __pycache__/
 *out
 logs/
+
+# raw chunk outputs of the chunked jobs: intermediate, merged into one table per run (see results/README.md)
+results/*_part*.csv
