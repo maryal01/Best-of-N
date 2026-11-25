@@ -26,56 +26,17 @@ from pathlib import Path
 import numpy as np
 import torch
 from datasets import load_dataset
-from transformers import AutoModel, AutoModelForSequenceClassification, AutoTokenizer
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from scoring import score_batched
+from scorers import MODELS, load_scorer
 
 ANSWERS_PER_ROW = 32
 RESULTS = Path(__file__).resolve().parents[2] / "results"
-MODELS = {"internlm": "internlm/internlm2-1_8b-reward", "skywork_llama": "Skywork/Skywork-Reward-Llama-3.1-8B"}
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--datasets", nargs="+", default=["MATH", "MMLU-Pro", "GPQA"])
-parser.add_argument("--scorers", nargs="+", default=["internlm", "skywork_llama"], choices=list(MODELS))
+parser.add_argument("--scorers", nargs="+", default=["internlm", "skywork_llama"], choices=["internlm", "skywork_llama"])
 args = parser.parse_args()
-
-
-def load_scorer(name):
-    """Returns a function pairs -> scores (numpy array) for the chosen reward model."""
-    model_id = MODELS[name]
-    tok = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
-
-    if name == "internlm":
-        model = AutoModel.from_pretrained(model_id, device_map="cuda", torch_dtype=torch.float16, trust_remote_code=True)
-        chats = lambda pairs: [[{"role": "user", "content": q}, {"role": "assistant", "content": a}] for q, a in pairs]
-        batch = 4                                                          # chats per get_scores call
-
-        MAX_TOKENS = 8192        # InternLM's eager attention needs memory quadratic in the length. About 0.1% of the answers are
-                                 # degenerate repetitions of 10k-100k characters (up to 1 token per character): keep their last 8192 tokens.
-        SHORT = 2048             # up to this length (tokens) 4 answers share a batch, longer ones are scored one at a time
-
-        def score(pairs):
-            ids = [tok(a, add_special_tokens=False).input_ids for _, a in pairs]
-            pairs = [(q, tok.decode(i[-MAX_TOKENS:]) if len(i) > MAX_TOKENS else a) for (q, a), i in zip(pairs, ids)]
-            lengths = np.minimum([len(i) for i in ids], MAX_TOKENS)
-            order = np.argsort(lengths)                                    # shortest first: little padding, the longest come last
-            scores = np.empty(len(pairs))
-            pos = 0
-            while pos < len(order):
-                size = batch if lengths[order[min(pos + batch - 1, len(order) - 1)]] <= SHORT else 1
-                chunk = order[pos:pos + size]
-                scores[chunk] = model.get_scores(tok, chats([pairs[j] for j in chunk]))
-                pos += size
-            return scores
-        return score
-
-    # Skywork-Llama: Llama tokenizers have no pad token. Use one that never occurs in the text, so the model's
-    # "last non-pad token" lookup cannot mistake a real token for padding.
-    tok.pad_token = "<|finetune_right_pad_id|>" if "<|finetune_right_pad_id|>" in tok.get_vocab() else "<|reserved_special_token_0|>"
-    model = AutoModelForSequenceClassification.from_pretrained(model_id, dtype=torch.float16, device_map="cuda", num_labels=1)   # fp16: batched and single scores agree better than in bf16
-    model.config.pad_token_id = tok.pad_token_id
-    return lambda pairs: np.array(score_batched(model, tok, False, pairs, token_budget=16384, via_text=True))
 
 
 def check_padding(score_fn, pairs):
