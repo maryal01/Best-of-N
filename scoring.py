@@ -2,7 +2,7 @@
 import torch
 
 
-def encode(rm_tok, pair_input, question, answer):
+def encode(rm_tok, pair_input, question, answer, via_text=False):
     """Token ids (and masks) of one (question, answer) pair, as a plain dict."""
     if pair_input:
         # The OpenAssistant (DeBERTa) reward model takes a (question, answer) pair and reads at
@@ -15,11 +15,16 @@ def encode(rm_tok, pair_input, question, answer):
             {"role": "user", "content": question},
             {"role": "assistant", "content": answer}
         ]
-        enc = rm_tok.apply_chat_template(chat, tokenize=True, return_dict=True)
+        if via_text:
+            # Render the chat to text, then tokenize the text: the tokenizer adds special tokens such as BOS, which
+            # some chat templates leave out (e.g. Skywork-Reward-Llama-3.1-8B).
+            enc = rm_tok(rm_tok.apply_chat_template(chat, tokenize=False))
+        else:
+            enc = rm_tok.apply_chat_template(chat, tokenize=True, return_dict=True)
     return dict(enc)
 
 
-def score_batched(rm, rm_tok, pair_input, pairs, token_budget=32768):
+def score_batched(rm, rm_tok, pair_input, pairs, token_budget=32768, via_text=False):
     """
     One reward score for each (question, answer) in `pairs`, in the same order.
 
@@ -31,7 +36,7 @@ def score_batched(rm, rm_tok, pair_input, pairs, token_budget=32768):
     if rm.config.pad_token_id is None:       # needed to score a padded batch
         rm.config.pad_token_id = rm_tok.pad_token_id
 
-    encodings = [encode(rm_tok, pair_input, q, a) for q, a in pairs]
+    encodings = [encode(rm_tok, pair_input, q, a, via_text) for q, a in pairs]
     lengths = [len(e["input_ids"]) for e in encodings]
     order = sorted(range(len(encodings)), key=lambda i: -lengths[i])     # longest first
     scores = [0.0] * len(encodings)
