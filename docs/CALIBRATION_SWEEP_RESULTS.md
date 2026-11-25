@@ -45,7 +45,7 @@ Calibration questions: 10 / 25 / 50 / 100 (GSM8K also 200).
 | K=5 equal | 0.0096 | 0.0065 | 0.0046 | 0.0034 | 0.0026 | 0.0023 |
 | K=3 top 5% | 0.0071 | 0.0043 | 0.0026 | 0.0014 | 0.0003 | 0.0000 |
 
-### MATH held-out + Skywork (3,000 questions: eval 2,400, calibration pool 600; real best N: median 29, 10-90% range 24-35; N=1 loses 0.0558, N=256 loses 0.0035)
+### MATH held-out + Skywork (our run `results/math_skywork_gilbreth.csv`, 3,000 questions: eval 2,400, calibration pool 600; real best N: median 29, 10-90% range 24-35; N=1 loses 0.0558, N=256 loses 0.0035)
 
 | Layout | 10 | 25 | 50 | 100 | 200 | 400 | 600 | Floor |
 |---|---|---|---|---|---|---|---|---|

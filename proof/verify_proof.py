@@ -1,14 +1,16 @@
 """Numerical checks for proof/bon_monotonicity.tex.
 
 Part A checks the theorems against brute force on random parameters.
-Part B recomputes the numbers quoted in the "Connection to the LLM experiment" section.
+Part B recomputes the numbers quoted in the "Connection to the LLM experiment" section
+(tied scores are broken uniformly at random; every three-level binning tried is printed).
 
     python proof/verify_proof.py                      # everything
     python proof/verify_proof.py path/to/table.csv    # only analyse the given table(s)
 """
 import csv
+import subprocess
 import sys
-from math import lgamma
+from math import comb
 from pathlib import Path
 
 import numpy as np
@@ -74,43 +76,111 @@ if not TABLES:
 
 
 # ---------------- Part B: LLM data ----------------
-def rank_table(path):
-    """Q x M 0/1 matrix; column j = correctness of the (j+1)-th lowest-scored answer."""
+MATH500_COMMIT = "7a412e2"  # the MATH-500 tables were later removed from results/
+
+
+def open_table(name):
+    """Lines of a result table, from disk or (MATH-500) from git history; None if neither."""
+    for path in (Path(name), ROOT / name):
+        if path.exists():
+            return open(path)
+    got = subprocess.run(["git", "-C", str(ROOT), "show", f"{MATH500_COMMIT}:{name}"],
+                         capture_output=True, text=True)
+    return got.stdout.splitlines() if got.returncode == 0 else None
+
+
+def rank_table(lines, keep=lambda qid: True):
+    """Q x M matrix; column j = correctness of the (j+1)-th lowest-scored answer.
+    Tied answers share their mean correctness, i.e. ties are broken uniformly at random."""
     g = {}
-    for r in csv.DictReader(open(path)):
-        g.setdefault(r["question_id"], []).append((float(r["score"]), int(r["correct"])))
-    return np.array([[c for _, c in sorted(v)] for v in g.values()], float)
+    for r in csv.DictReader(lines):
+        if keep(int(r["question_id"])):
+            g.setdefault(r["question_id"], []).append((float(r["score"]), int(r["correct"])))
+    rows = []
+    for v in g.values():
+        s, c = np.array(sorted(v)).T
+        _, tie, n = np.unique(s, return_inverse=True, return_counts=True)
+        rows.append(np.bincount(tie, weights=c)[tie] / n[tie])
+    return np.array(rows)
 
 
-def weights_without_replacement(N, M):
-    """P(top-scored of a uniform N-subset has ascending rank j) = C(j-1,N-1)/C(M,N)."""
-    lc = lambda n, k: lgamma(n + 1) - lgamma(k + 1) - lgamma(n - k + 1)
-    j = np.arange(1, M + 1)
-    w = np.zeros(M)
-    w[j >= N] = np.exp([lc(jj - 1, N - 1) - lc(M, N) for jj in j[j >= N]])
-    return w
+def weights_without_replacement(M):
+    """W[N-1, j-1] = P(top-scored of a uniform N-subset has ascending rank j)."""
+    return np.array([[comb(j - 1, N - 1) / comb(M, N) for j in range(1, M + 1)] for N in range(1, M + 1)])
 
 
+def boot_ci(d, B=20_000):
+    g = np.random.default_rng(1)
+    return np.quantile([d[g.integers(0, len(d), len(d))].mean() for _ in range(B)], [.025, .975])
+
+
+def turns(x):
+    s = np.sign(np.diff(x))
+    s = s[s != 0]
+    return int((s[1:] != s[:-1]).sum())
+
+
+def three_level_fits(mbar):
+    """Every binning tried: tertiles, then bottom half..15/16 x top 1, 2 or 4 answers."""
+    M = len(mbar)
+    cuts = [(M // 3, M - M // 3)] + [(M - M // k, M - t) for k in (2, 4, 8, 16) for t in (1, 2, 4)]
+    for lo, hi in cuts:
+        if not lo < hi:
+            continue
+        p = np.array([lo, hi - lo, M - hi]) / M
+        m = np.array([mbar[:lo].mean(), mbar[lo:hi].mean(), mbar[hi:].mean()])
+        a, b = p[0] + p[1], p[0]
+        D1 = (m[1] - m[0]) * (1 - b) * b - (m[1] - m[2]) * (1 - a) * a
+        beta = m[2] - m[1]
+        if beta < 0 < D1:
+            Ns = np.log((m[1] - m[0]) * (1 - b) / ((m[1] - m[2]) * (1 - a))) / np.log(a / b)
+            shape = f"peak N_opt={max(1, int(np.floor(Ns)) + 1)}"
+        elif beta >= 0 and D1 >= 0:
+            shape = "increasing"
+        elif beta <= 0 and D1 <= 0:
+            shape = "decreasing"
+        else:
+            shape = "dip"
+        yield (lo, hi - lo, M - hi), m, shape, V(M, p, m)
+
+
+RUNS = [(n, n, lambda q: True) for n in TABLES] or [
+    ("GSM8K default scorer", "results/default64_table.csv", lambda q: True),
+    ("GSM8K weak scorer (100q, M=64)", "results/weak_scorer64_table.csv", lambda q: True),
+    ("GSM8K weak scorer + weak generator", "results/weak_both64_table.csv", lambda q: True),
+    ("GSM8K weak scorer, first 100 questions", "results/table256.csv", lambda q: True),
+    ("GSM8K weak scorer, full", "table.csv", lambda q: True),
+    ("GSM8K weak scorer, questions 100-1318 only", "table.csv", lambda q: q >= 100),
+    ("MATH-500 weak scorer", "results/math500_Skywork-Reward-V2-Qwen3-0.6B.csv", lambda q: True),
+    ("MATH held-out weak scorer", "results/math_skywork.csv", lambda q: True),
+    ("MATH-500 DeBERTa", "results/math500_reward-model-deberta-v3-large-v2.csv", lambda q: True),
+]
 print("\nB. exact Best-of-N curves from the result tables (Prop. 1(ii))")
-EDGES = [0, .25, .5, .75, .9, .95, .98, 1.0]
-for name in TABLES or ["results/default64_table.csv", "results/weak_scorer64_table.csv",
-                       "results/weak_both64_table.csv", "table.csv"]:
-    path = Path(name) if TABLES else ROOT / name
-    if not path.exists():
-        print(f"   {name}: missing, skipped")
+for label, name, keep in RUNS:
+    lines = open_table(name)
+    if lines is None:
+        print(f"\n   {label}: {name} missing, skipped")
         continue
-    C = rank_table(path)
+    C = rank_table(lines, keep)
     Q, M = C.shape
     mbar = C.mean(0)
-    Vq = np.array([C @ weights_without_replacement(N, M) for N in range(1, M + 1)]).T  # Q x M
+    Vq = C @ weights_without_replacement(M).T  # Q x M
     v = Vq.mean(0)
-    idx = [int(round(e * M)) for e in EDGES]
-    bins = " ".join(f"{mbar[idx[i]:idx[i + 1]].mean():.3f}" for i in range(len(EDGES) - 1))
-    print(f"   {name}: Q={Q} M={M}  argmax N={v.argmax() + 1}  max={v.max():.4f}  V(M)={v[-1]:.4f}")
-    print(f"      rank-calibration by score-quantile bin (low->high): {bins};  top rank alone: {mbar[-1]:.2f}")
-    if v.argmax() + 1 < M:  # apparent interior optimum: is the decline significant?
-        d = Vq[:, v.argmax()] - Vq[:, -1]
-        bs = np.array([d[rng.integers(0, Q, Q)].mean() for _ in range(20_000)])
-        lo, hi = np.quantile(bs, [.025, .975])
-        print(f"      decline V(peak)-V(M) = {d.mean():.4f}, bootstrap-over-questions 95% CI [{lo:.3f}, {hi:.3f}]")
-        print("      -> " + ("significant: the interval excludes zero" if lo > 0 else "not significant: the interval includes zero"))
+    print(f"\n   {label} ({name}): Q={Q} M={M}")
+    print("      V(N): " + "  ".join(f"{n}:{v[n - 1]:.4f}" for n in (1, 2, 4, 8, 16, 32, 64, 94, 128, 256) if n <= M)
+          + f"   argmax N={v.argmax() + 1} ({v.max():.4f})")
+    idx = [int(round(e * M)) for e in (0, .25, .5, .75, .9, .95, .98)] + [M - 1, M]
+    bins = np.array([mbar[i:j].mean() for i, j in zip(idx, idx[1:]) if i < j])
+    print("      rank calibration, low->high (last = top answer): " + " ".join(f"{x:.3f}" for x in bins)
+          + f"   turning points: binned {turns(bins)}, raw {turns(mbar)}")
+    for i in (1, 16, 64, 94):
+        if i < M:
+            d = Vq[:, i - 1] - Vq[:, -1]
+            lo, hi = boot_ci(d)
+            print(f"      V({i})-V({M}) = {d.mean():+.4f}  95% CI [{lo:+.4f}, {hi:+.4f}]")
+    if v.argmax() not in (0, M - 1):
+        d = Vq[:, v.argmax()] - Vq[:, 0]
+        lo, hi = boot_ci(d)
+        print(f"      V(argmax)-V(1) = {d.mean():+.4f}  95% CI [{lo:+.4f}, {hi:+.4f}]   (peak chosen on same data)")
+    for split, m, shape, vM in three_level_fits(mbar):
+        print(f"      3-level fit {split}: m = {np.round(m, 3)}  {shape:14s}  V({M}) fit {vM:.3f} vs data {v[-1]:.3f}")
