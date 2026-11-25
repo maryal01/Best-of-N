@@ -51,17 +51,22 @@ def load_scorer(name):
         chats = lambda pairs: [[{"role": "user", "content": q}, {"role": "assistant", "content": a}] for q, a in pairs]
         batch = 4                                                          # chats per get_scores call
 
-        MAX_CHARS = 20_000       # about 0.1% of the answers are longer (degenerate, repetitive outputs of up to 100k characters);
-                                 # InternLM's eager attention needs memory quadratic in the length. Keep the END of such an answer.
+        MAX_TOKENS = 8192        # InternLM's eager attention needs memory quadratic in the length. About 0.1% of the answers are
+                                 # degenerate repetitions of 10k-100k characters (up to 1 token per character): keep their last 8192 tokens.
+        SHORT = 2048             # up to this length (tokens) 4 answers share a batch, longer ones are scored one at a time
 
         def score(pairs):
-            pairs = [(q, a[-MAX_CHARS:]) for q, a in pairs]
-            # shortest first, so a batch has little padding and the longest ones (which need the most memory) come last
-            order = np.argsort([len(a) for _, a in pairs])
-            sorted_scores = np.concatenate(
-                [np.array(model.get_scores(tok, chats([pairs[j] for j in order[i:i + batch]]))) for i in range(0, len(pairs), batch)])
+            ids = [tok(a, add_special_tokens=False).input_ids for _, a in pairs]
+            pairs = [(q, tok.decode(i[-MAX_TOKENS:]) if len(i) > MAX_TOKENS else a) for (q, a), i in zip(pairs, ids)]
+            lengths = np.minimum([len(i) for i in ids], MAX_TOKENS)
+            order = np.argsort(lengths)                                    # shortest first: little padding, the longest come last
             scores = np.empty(len(pairs))
-            scores[order] = sorted_scores                                  # back to the original order
+            pos = 0
+            while pos < len(order):
+                size = batch if lengths[order[min(pos + batch - 1, len(order) - 1)]] <= SHORT else 1
+                chunk = order[pos:pos + size]
+                scores[chunk] = model.get_scores(tok, chats([pairs[j] for j in chunk]))
+                pos += size
             return scores
         return score
 

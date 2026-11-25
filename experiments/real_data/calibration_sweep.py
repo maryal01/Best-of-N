@@ -17,6 +17,7 @@ whole EVAL set (i.e. with unlimited calibration data). It is the floor that more
 Run from the repo root:  python experiments/real_data/calibration_sweep.py results/math500_reward-model-deberta-v3-large-v2.csv [more tables ...]
 Writes docs/calibration_sweep.png and prints one table per input.
 """
+import os
 import sys
 from pathlib import Path
 
@@ -31,6 +32,9 @@ LAYOUTS = {                                   # level masses p_j, lowest score f
     "K=3 equal": [1 / 3, 1 / 3, 1 / 3],
     "K=5 equal": [0.2] * 5,
     "K=3 top 5%": [0.50, 0.45, 0.05],
+    # Dyadic: level masses halve towards the top (bottom 50%, then 25%, ...), so every power of two N = 1, 2, 4, ... has its own level.
+    # Best-of-N with N answers looks at the top ~1/N of the scores, which is where over-optimization shows.
+    "K=6 dyadic": [0.5, 0.25, 0.125, 0.0625, 0.03125, 0.03125],
 }
 EMPIRICAL = "Empirical (direct)"            # name of the baseline in the tables and the figure
 N_SPLITS = 1000                               # random calibration/eval splits per setting
@@ -169,5 +173,6 @@ for ax, path, summary in zip(axes[0], paths, summaries):
     ax.legend(fontsize=8)
 plt.suptitle("Regret of the estimated best N vs. calibration size (dotted: floor with unlimited data)")
 plt.tight_layout()
-plt.savefig(Path(__file__).resolve().parents[2] / "docs" / "calibration_sweep.png", dpi=150, bbox_inches="tight")
-print("\nsaved docs/calibration_sweep.png")
+figure_name = os.environ.get("SWEEP_FIGURE", "calibration_sweep.png")          # e.g. SWEEP_FIGURE=ppe_sweep.png for another table set
+plt.savefig(Path(__file__).resolve().parents[2] / "docs" / figure_name, dpi=150, bbox_inches="tight")
+print(f"\nsaved docs/{figure_name}")
