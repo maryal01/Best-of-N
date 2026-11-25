@@ -45,6 +45,17 @@ Calibration questions: 10 / 25 / 50 / 100 (GSM8K also 200).
 | K=5 equal | 0.0096 | 0.0065 | 0.0046 | 0.0034 | 0.0026 | 0.0023 |
 | K=3 top 5% | 0.0071 | 0.0043 | 0.0026 | 0.0014 | 0.0003 | 0.0000 |
 
+### MATH held-out + Skywork (3,000 questions: eval 2,400, calibration pool 600; real best N: median 29, 10-90% range 24-35; N=1 loses 0.0558, N=256 loses 0.0035)
+
+| Layout | 10 | 25 | 50 | 100 | 200 | 400 | 600 | Floor |
+|---|---|---|---|---|---|---|---|---|
+| K=3 equal | 0.0060 | 0.0027 | 0.0019 | 0.0018 | 0.0018 | 0.0018 | 0.0018 | 0.0018 |
+| K=5 equal | 0.0083 | 0.0048 | 0.0038 | 0.0034 | 0.0034 | 0.0034 | 0.0034 | 0.0034 |
+| K=3 top 5% | 0.0071 | 0.0046 | 0.0038 | 0.0036 | 0.0035 | 0.0035 | 0.0035 | 0.0035 |
+| **Empirical (direct)** | 0.0065 | 0.0043 | 0.0033 | 0.0028 | 0.0025 | 0.0023 | 0.0021 | |
+
+All regrets are at most 0.008: the real curve is nearly flat after N=30 (going to N=256 loses only 0.0035), so a wrong N costs little by construction (see [`REAL_CURVES_RESULTS.md`](REAL_CURVES_RESULTS.md)). Standard errors are at most 0.0004.
+
 ## Comparison with the direct empirical baseline
 
 Mean regret of the baseline, and the **paired difference** (K-level model minus empirical, same splits; negative = our method is better, mean +- standard error).
@@ -73,6 +84,15 @@ Mean regret of the baseline, and the **paired difference** (K-level model minus 
 
 (Standard errors are 0.0001 to 0.0007; bold = more than 2 standard errors below zero.)
 
+Held-out MATH (paired difference, layout minus empirical; 10 / 25 / 50 / 100 / 200 / 400 / 600 calibration questions):
+
+| Layout | 10 | 25 | 50 | 100 | 200 | 400 | 600 |
+|---|---|---|---|---|---|---|---|
+| K=3 equal | **-0.0005** | **-0.0016** | **-0.0013** | **-0.0010** | **-0.0007** | **-0.0004** | **-0.0002** |
+| K=5 equal | +0.0017 | +0.0005 | +0.0005 | +0.0006 | +0.0009 | +0.0011 | +0.0013 |
+| K=3 top 5% | +0.0006 | +0.0003 | +0.0006 | +0.0008 | +0.0010 | +0.0012 | +0.0014 |
+
+
 **Reading:**
 - **Very few calibration questions (10-25): the K-level model beats the empirical curve on MATH-500**, by up to 0.0065 (a 40-50% lower regret on DeBERTa). The empirical argmax is noisy when the curve is nearly flat, and the model smooths it by pooling answers into 3 to 5 levels.
 - **With more data the empirical method catches up and overtakes** on DeBERTa (crossover around 50 questions for K=3, around 100 for K=5), because the model's discretization floor (0.0004 for K=3, 0.0000 for K=5) is no longer negligible against the shrinking estimation error.
@@ -87,6 +107,13 @@ Mean regret of the baseline, and the **paired difference** (K-level model minus 
 - **DeBERTa:** the median `N_hat` is already 2 (the truth) with 10 questions; the mean `N_hat` is inflated by a few large overshoots, which matter because N=256 loses 0.049.
 - **The synthetic failure mode ("top level never observed, so N_hat jumps to N_max") does not occur here**, because rank levels are defined within each question, so every question contributes answers to every level. The finite-data difficulty shows up as variance of `m_hat` instead.
 - Because the layout sets the floor, the layout must be chosen without looking at the eval truth (here: fixed in advance: K=3 equal, K=5 equal, K=3 top 5%).
+
+## Held-out MATH: what it adds
+
+- **The sweep conclusions hold on 6x more questions** (2,400 eval questions, calibration up to 600): regret falls with calibration size and then stops at the discretization floor of the layout (0.0018 for K=3 equal, 0.0034-0.0035 for K=5 equal and K=3 top 5%).
+- **K=3 equal beats the direct empirical method at every calibration size** (by 0.0002 to 0.0016), but the gap shrinks: the empirical regret keeps falling (0.0065 to 0.0021) while K=3 equal is stuck at its floor 0.0018; with a few more calibration questions the empirical method would catch up, as it did on MATH-500 + DeBERTa after about 50 questions. K=5 equal and K=3 top 5% (higher floors) lose to the empirical method at all sizes.
+- **Absolute differences are tiny** because the curve is flat after N=30; this is a setting where choosing N matters little, so it is a weak test of the method. The informative settings are those with a sharp peak (MATH-500 + DeBERTa).
+- The empirical method's median `N_hat` keeps moving down with more data (127 to 33) towards the true N* of 29, while the K-level models settle at the N implied by their coarse levels (86, 150, 256): the floor in action.
 
 ## Caveats
 
