@@ -56,6 +56,18 @@ Calibration questions: 10 / 25 / 50 / 100 (GSM8K also 200).
 
 All regrets are at most 0.008: the real curve is nearly flat after N=30 (going to N=256 loses only 0.0035), so a wrong N costs little by construction (see [`REAL_CURVES_RESULTS.md`](REAL_CURVES_RESULTS.md)). Standard errors are at most 0.0004.
 
+### MATH held-out + InternLM-2-1.8B (3,000 questions: eval 2,400, calibration pool 600; real best N: median 15, 10-90% range 13-19; N=1 loses 0.0258, N=256 loses 0.0079)
+
+| Layout | 10 | 25 | 50 | 100 | 200 | 400 | 600 | Floor |
+|---|---|---|---|---|---|---|---|---|
+| K=3 equal | 0.0062 | 0.0044 | 0.0036 | 0.0033 | 0.0033 | 0.0033 | 0.0033 | 0.0033 |
+| K=5 equal | 0.0073 | 0.0056 | 0.0048 | 0.0046 | 0.0047 | 0.0049 | 0.0052 | 0.0054 |
+| K=3 top 5% | 0.0085 | 0.0066 | 0.0059 | 0.0059 | 0.0064 | 0.0069 | 0.0072 | 0.0079 |
+| **K=6 dyadic** | 0.0071 | 0.0051 | 0.0042 | 0.0036 | 0.0031 | 0.0026 | 0.0023 | 0.0001 |
+| **Empirical (direct)** | 0.0067 | 0.0053 | 0.0047 | 0.0038 | 0.0034 | 0.0028 | 0.0021 | |
+
+The dyadic layout and the direct empirical method are tied (paired differences between -0.0004 and +0.0003) and both keep improving with more data, while the other layouts stop at floors of 0.003 to 0.008 (K=3 equal beats the empirical method up to about 100 questions, then loses). All regrets are below 0.009: the curve is nearly flat near its peak, so the stakes are small. Figure: [`math_internlm_sweep.png`](math_internlm_sweep.png).
+
 ## Comparison with the direct empirical baseline
 
 Mean regret of the baseline, and the **paired difference** (K-level model minus empirical, same splits; negative = our method is better, mean +- standard error).

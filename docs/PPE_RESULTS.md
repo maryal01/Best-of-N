@@ -38,6 +38,7 @@ The per-pair intervals above pick the best N on the same data (optimistic) and h
 
 - **Each pair alone is underpowered, not refuted:** the per-question standard deviation of the decline is about 0.33, so detecting a decline of 0.02 with 80% power needs about 1,600 to 3,000 questions per pair; each table has 512.
 - **Pooled over the three pairs (selection-free) the decline is significant: about 0.02, 95% interval [+0.004, +0.035].** The qualitative claim (accuracy peaks at a small N and falls by N=32) holds on average across the paper's pairs, with a small effect size.
+- **Follow-up on more questions:** the same pair on our 3,000 held-out MATH questions (stronger generator, N up to 256) shows the same shape but a smaller effect (0.008 by N=256, pre-registered test borderline): see [`REAL_CURVES_RESULTS.md`](REAL_CURVES_RESULTS.md).
 - Consequence for the project: the stake of choosing N well in these settings is small (at most about 0.02 to 0.05 accuracy); the interesting regimes are those with a sharper loss (MATH-500 + DeBERTa, -0.049) and the synthetic rare-top-level worlds.
 
 ## Calibration sweep (K-level model vs direct empirical)

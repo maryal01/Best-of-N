@@ -50,6 +50,28 @@ Data: `results/math_skywork_gilbreth.csv` (our run): a pseudo-random sample (fix
 - So with the Skywork-0.6B scorer on MATH there is no measurable over-optimization up to N=256. The only setting with a significant peak remains MATH-500 + DeBERTa (N*=2).
 - The MATH-500 decline of 0.012 was most likely noise (its interval [-0.001, 0.026] already contained zero).
 
+## MATH held-out + InternLM-2-1.8B (our 3,000 questions, N up to 256)
+
+A direct test of the paper's pair (MATH + InternLM-2-1.8B, [`PPE_RESULTS.md`](PPE_RESULTS.md)) on more questions and larger N: the saved answers of our held-out run (3,000 questions x 256 answers by Qwen2.5-Math-1.5B-Instruct) were re-scored with InternLM-2-1.8B (`experiments/rescore/score_saved_answers.py`; table `results/math_gilbreth_internlm.csv`, same rows and correctness flags as `math_skywork_gilbreth.csv`).
+**Pre-registered before looking:** accuracy at N0 = 11 (the N chosen for this pair from the other two PPE pairs) versus N = 256; secondary: N = 32 versus N = 256.
+
+| Scorer (same 3,000 questions, same answers) | Mean score correct vs wrong | N=1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256 | Best N (acc) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| InternLM-2-1.8B | +1.22 vs +0.30 | 0.758 | 0.773 | 0.780 | 0.783 | 0.783 | 0.783 | 0.781 | 0.779 | 0.776 | 15 (0.783) |
+| Skywork-0.6B | +8.24 vs +4.25 | 0.758 | 0.786 | 0.801 | 0.810 | 0.813 | 0.814 | 0.813 | 0.811 | 0.810 | 29 (0.814) |
+
+| Test (bootstrap over 3,000 questions) | Decline (95% interval) | |
+|---|---|---|
+| **Pre-registered:** N=11 to N=256, InternLM | +0.0077 [-0.0004, +0.0158] | not significant (borderline) |
+| Secondary: N=32 to N=256, InternLM | +0.0072 [+0.0000, +0.0140] | significant (borderline) |
+| N=11 to N=256, Skywork-0.6B (same answers) | +0.0014 [-0.0063, +0.0090] | not significant |
+| Paired difference InternLM minus Skywork | +0.0063 [-0.0045, +0.0171] | not significant |
+
+- **A rise and a very small fall, at the edge of detectability even with 3,000 questions.** Accuracy rises from 0.758 to 0.783 (N about 8 to 32), then slowly falls to 0.776 at N=256. The pre-registered decline (0.0077) just misses significance, the secondary one just reaches it: the evidence is weak.
+- **The effect is smaller and comes later than on PPE.** There, MATH + InternLM lost 0.023 between the peak (N=7) and N=32; here accuracy is flat between N=8 and N=32 and loses only 0.008 by N=256. The answers come from a different, much stronger generator (accuracy 0.76 here against 0.34 on PPE), so there are fewer hopeless questions for the scorer to be fooled on.
+- **The weaker scorer falls more than the stronger one on the same answers** (InternLM 0.0077 vs Skywork 0.0014 from N=11), in the direction expected, but the difference is not significant. The rank profile agrees: the top-ranked answer of InternLM is slightly less accurate than ranks 5 to 16 (0.776 vs 0.785).
+- **The stake is small:** moving from N=1 to N=11 gains 0.026 (InternLM) and the best fixed N is worth at most 0.008 over N=256.
+
 ## Coding feasibility (MBPP+, pre-generated solutions)
 
 Data: `lmarena-ai/PPE-MBPP-Plus-Best-of-K` (507 rows = 298 distinct MBPP+ tasks x several generator models; each row has 32 solutions from ONE generator with a unit-test result per solution). A row is one "question" with 32 candidates, so N <= 32. Scored with `experiments/coding/score_ppe_mbpp.py`:

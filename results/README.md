@@ -11,6 +11,7 @@ does not matter. Every math table has 256 answers per question.
 | `math500_reward-model-deberta-v3-large-v2.csv` | MATH-500, same answers, DeBERTa (weakest) scorer: the only table with a significant peak (N*=2) | `experiments/real_data/`, `docs/` |
 | `math_skywork.csv` | Held-out MATH, 3,000 questions, Skywork scorer; **Manish's run** (Scholar) | README results table, `proof/verify_proof.py` |
 | `math_skywork_gilbreth.csv` | The **same 3,000 questions, an independent second run** (Gilbreth, porsche, ferrari) | `docs/REAL_CURVES_RESULTS.md`, `docs/CALIBRATION_SWEEP_RESULTS.md` |
+| `math_gilbreth_internlm.csv` | The same 3,000 held-out questions and answers as `math_skywork_gilbreth.csv`, re-scored with InternLM-2-1.8B (rows and `correct` flags identical) | `docs/REAL_CURVES_RESULTS.md`, `docs/CALIBRATION_SWEEP_RESULTS.md` |
 | `mbpp_plus_*.csv`, `mbpp_plus_meta.csv` | Coding feasibility: PPE MBPP+ (32 answers per row), CodeScaler and DeBERTa scorers; meta = row to task and generator | `docs/REAL_CURVES_RESULTS.md` |
 | `ppe_<dataset>_<scorer>.csv`, `ppe_<dataset>_meta.csv` | PPE Best-of-K MATH, MMLU-Pro, GPQA (512 questions x 32 answers) with InternLM-2-1.8B and Skywork-Reward-Llama-3.1-8B; meta = generator of each row | `docs/PPE_RESULTS.md` |
 | `gen_{mbpp,humaneval}_<scorer>.csv` (scorers: codescaler, deberta, skywork_v2_0.6b, skywork_v2_1.7b, internlm, skywork_llama) | Our own generation: 256 solutions per MBPP+ / HumanEval+ problem (Qwen2.5-Coder-1.5B), correct = passes EvalPlus base and plus tests | `docs/CODING_RESULTS.md` |
