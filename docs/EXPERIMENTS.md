@@ -27,7 +27,8 @@ Each experiment has its code in `experiments/` (or the repo root for the data pi
 
 ## Next
 
-1. **Replicate the one clearly significant peak on new questions:** score our 3,000 held-out MATH answers with the DeBERTa reward model (`experiments/rescore/score_saved_answers.py --scorer deberta`; about 1 to 2 hours on 8 GPUs) and test accuracy at N=2 vs N=256 with the pre-registered N from MATH-500. Today the DeBERTa peak (N*=2) has been seen only on MATH-500.
+1. **Replicate the one clearly significant peak on new questions (running).** Score our 3,000 held-out MATH answers with the DeBERTa reward model (`experiments/rescore/score_saved_answers.py --scorer deberta`, same input format as for MATH-500: question and answer as a pair, 512 tokens, left truncation, fp32).
+   **Pre-registered before any DeBERTa score on these questions existed:** the primary test is the accuracy at N=2 (the best N on MATH-500 + DeBERTa) minus the accuracy at N=256, with the 95% bootstrap interval over the 3,000 questions (run_experiment.py with N=2); the peak replicates if the lower bound of the interval is above 0. Expected from MATH-500: a decline of about 0.05. Secondary: best N and shape of the curve, gain from N=1 to N=2.
 2. Write the final report from this page (figures: `docs/*.png`).
 3. Optional: a finer dyadic ladder for very narrow tails (1/64, 1/128, ...); shrinkage or a prior on `m_hat` for very small calibration sets.
 
