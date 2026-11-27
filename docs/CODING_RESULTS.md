@@ -62,7 +62,7 @@ The same 96,768 + 41,984 solutions were scored with general-purpose (not code-sp
 | | Skywork-V2-1.7B | +7.20 vs +2.34 | 0.565 | 0.664 | 0.683 | 0.679 | 104 (0.689) | 0.010 |
 | | Skywork-V2-0.6B | +6.42 vs +1.98 | 0.565 | 0.634 | 0.644 | 0.646 | 145 (0.648) | 0.002 |
 | | InternLM-2-1.8B | +0.78 vs +0.33 | 0.565 | 0.596 | 0.601 | 0.598 | 26 (0.601) | 0.003 |
-| | Skywork-Llama-3.1-8B | (still running) | | | | | | |
+| | Skywork-Llama-3.1-8B | +21.19 vs +5.02 | 0.565 | 0.634 | 0.636 | 0.646 | 256 (0.646) | 0.000 |
 | | DeBERTa | -0.37 vs -0.62 | 0.565 | 0.559 | 0.552 | 0.548 | 2 (0.567) | 0.019 |
 
 Pooled over both datasets (542 tasks), selection-free (N=32 fixed), decline = accuracy at N=32 minus accuracy at N=256:
@@ -73,11 +73,11 @@ Pooled over both datasets (542 tasks), selection-free (N=32 fixed), decline = ac
 | Skywork-V2-1.7B | -0.0292 | +0.0041 | -0.0060 [-0.022, +0.011] |
 | Skywork-V2-0.6B | -0.0152 | -0.0014 | -0.0056 [-0.025, +0.013] |
 | InternLM-2-1.8B | -0.0243 | +0.0030 | -0.0052 [-0.025, +0.015] |
+| Skywork-Llama-3.1-8B | -0.0204 | -0.0093 | -0.0127 [-0.032, +0.006] |
 | DeBERTa | +0.0115 | +0.0045 | +0.0066 [-0.017, +0.030] |
 
 - **No scorer shows a significant decline up to N=256** (pooled intervals all include 0). The general-purpose reward models are informative on code (correct solutions score clearly higher) and their curves keep rising: on HumanEval+ the best N is 185 to 256 and nothing is lost at N=256; on MBPP+ the curves flatten after N of about 30 to 100 with losses of at most 0.010.
 - **The only scorer with a (still non-significant) decline on both datasets is the code-specific CodeScaler** (0.015 and 0.005); the general models rise further. So on code the "weak but informative scorer" regime does not produce the peak that it does on MATH or on the PPE reasoning sets: over-optimization of code reward models is, at most, very mild up to N=256 in these 542 tasks.
-- The Skywork-Llama-3.1-8B + MBPP+ run was not finished when this was written.
 
 ## Caveats
 - One small generator (1.5B), one strong code scorer; 164 and 378 problems, so the declines cannot be told apart from zero.
